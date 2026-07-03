@@ -110,7 +110,7 @@ let sharedSaveCompletedAt = 0;
 let sharedDataLoadToken = 0;
 const sharedDataChunkSize = 240000;
 const sharedDataChunkFormat = "chunked-json-v1";
-const livlivUpdateNumber = window.LIVLIV_UPDATE_NUMBER || "2026.07.04-13";
+const livlivUpdateNumber = window.LIVLIV_UPDATE_NUMBER || "2026.07.04-14";
 let expDeletePressTimer = null;
 let expDeletePressTarget = null;
 let suppressNextExpClick = false;
@@ -1247,7 +1247,7 @@ function fitMaterialHeaderLines(root = contentArea) {
 
   root.querySelectorAll(".material-card-header").forEach(header => {
     const titleText = header.querySelector("[data-material-fit-text]");
-    fitScaledLine(titleText, titleText?.closest(".material-card-title"), 0.04);
+    fitFontSizeLine(titleText, titleText?.closest(".material-card-title"), 0.28);
 
     header.querySelectorAll(".material-tag-display").forEach(line => {
       fitScaledLine(line, line.parentElement, 0.04);
@@ -2441,7 +2441,7 @@ function renderPersonalityProbabilityView() {
                 draggable="${useNativeProbabilityDrag ? "true" : "false"}"
                 aria-disabled="${disabled ? "true" : "false"}"
               >
-                <span>${escapeHtml(item.name || "名前未設定")}</span>
+                <span class="${compactTextClass(item.name || "名前未設定", { medium: 5, long: 8, dense: 12 })}">${escapeHtml(item.name || "名前未設定")}</span>
                 ${unwanted ? `<em>不要</em>` : ""}
               </button>
               <div class="info-popover personality-info-popover" role="dialog" aria-label="${escapeHtml(item.name || "個性")}の情報">
@@ -2553,7 +2553,7 @@ function renderProbabilityUnwantedZone(personalities) {
                   draggable="${useNativeProbabilityDrag ? "true" : "false"}"
                   aria-label="${escapeHtml(title)}を不要な個性から戻す"
                 >
-                  <span>${escapeHtml(title)}</span>
+                  <span class="${compactTextClass(title, { medium: 5, long: 8, dense: 12 })}">${escapeHtml(title)}</span>
                 </button>
                 ${item ? `
                   <div class="info-popover personality-info-popover" role="dialog" aria-label="${escapeHtml(title)}の情報">
@@ -4195,6 +4195,7 @@ function clearProbabilityTouchDragPress() {
   }
 
   clearTimeout(probabilityTouchDragPress.timer);
+  probabilityTouchDragPress.button?.classList.remove("is-touch-press-ready");
   probabilityTouchDragPress = null;
 }
 
@@ -4217,6 +4218,12 @@ function activateProbabilityTouchDragPress() {
 
   press.activated = true;
   suppressNextProbabilityClick = true;
+  press.button.classList.add("is-touch-press-ready");
+
+  if (typeof navigator !== "undefined" && typeof navigator.vibrate === "function") {
+    navigator.vibrate(18);
+  }
+
   createProbabilityDragState(
     press.button,
     press.source,

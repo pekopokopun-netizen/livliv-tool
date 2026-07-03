@@ -3415,9 +3415,25 @@ body.single-page-site {
 }
 
 .single-page-site .probability-choice span {
+  min-width: 0;
+  flex: 1 1 auto;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  text-align: center;
+  line-height: 1.05;
+}
+
+.single-page-site .probability-choice span.is-text-medium {
+  font-size: 11.5px;
+}
+
+.single-page-site .probability-choice span.is-text-long {
+  font-size: 10px;
+}
+
+.single-page-site .probability-choice span.is-text-dense {
+  font-size: 8.5px;
 }
 
 .single-page-site .probability-choice strong {
@@ -3429,6 +3445,13 @@ body.single-page-site {
   background: rgba(228, 184, 109, 0.16);
   border-color: #e4b86d;
   color: #f5f2ee;
+}
+
+.single-page-site .probability-choice.is-touch-press-ready {
+  border-color: #ffd66d;
+  box-shadow:
+    0 0 0 2px rgba(255, 214, 109, 0.72),
+    0 0 16px rgba(255, 214, 109, 0.22);
 }
 
 .single-page-site .probability-choice.is-limited {
@@ -8644,4 +8667,67 @@ body.single-page-site[data-active-route="materials"] .material-filter-dropdown.i
 body.single-page-site[data-active-route="materials"] .material-card-list {
   position: relative;
   z-index: 1;
+}
+
+body.single-page-site[data-active-route="personalityProbability"] .probability-settings {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  align-items: center;
+}
+
+body.single-page-site[data-active-route="personalityProbability"] .probability-rate-control {
+  min-width: 0;
+  justify-content: center;
+  gap: 3px;
+  white-space: nowrap;
+}
+
+body.single-page-site[data-active-route="personalityProbability"] .probability-rate-control > span:first-child {
+  min-width: 0;
+  font-size: clamp(10px, 2.8vw, 13px);
+  white-space: nowrap;
+}
+
+body.single-page-site[data-active-route="personalityProbability"] .probability-rate-display strong {
+  font-size: clamp(11px, 3vw, 15px);
+  white-space: nowrap;
+}
+
+body.single-page-site[data-active-route="personalityProbability"] .probability-percent-input {
+  grid-template-columns: minmax(44px, 1fr) auto;
+  min-width: 0;
+}
+
+body.single-page-site[data-active-route="personalityProbability"] .probability-percent-input input {
+  width: 100%;
+  min-width: 0;
+  padding-inline: 5px;
+}
+
+body.single-page-site[data-active-route="personalityProbability"] .probability-save-button {
+  grid-column: 1 / -1;
+}
+
+body.single-page-site[data-active-route="materials"] .material-card-title,
+body.single-page-site[data-active-route="materials"] .material-card-title.is-text-medium,
+body.single-page-site[data-active-route="materials"] .material-card-title.is-text-long,
+body.single-page-site[data-active-route="materials"] .material-card-title.is-text-dense {
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  overflow-wrap: normal !important;
+  word-break: normal !important;
+  line-height: 1.04;
+  transform: none !important;
+}
+
+body.single-page-site[data-active-route="materials"] .material-card-title-text {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: clip;
+  transform: none !important;
 }
