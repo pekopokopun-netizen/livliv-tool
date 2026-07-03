@@ -6784,6 +6784,8 @@ body.single-page-site {
 }
 
 .single-page-site .material-display-filter.card-layout-filter {
+  position: relative;
+  z-index: 1200;
   width: 100%;
   max-width: 1240px;
   margin: 0 auto 12px;
@@ -8156,6 +8158,7 @@ body.single-page-site[data-active-route="materials"] .material-card-header .mate
 
 .single-page-site .material-filter-dropdown {
   position: relative;
+  z-index: 1210;
   width: 100%;
   min-width: 0;
 }
@@ -8215,7 +8218,7 @@ body.single-page-site[data-active-route="materials"] .material-card-header .mate
   position: absolute;
   top: calc(100% + 4px);
   left: 0;
-  z-index: 80;
+  z-index: 1220;
   padding: 5px;
   background: #242730;
   border: 1px solid #50545f;
@@ -8499,4 +8502,22 @@ body.single-page-site[data-active-route="materials"] .material-card-header .mate
 
 body.single-page-site[data-active-route="materials"] .material-card-header .material-tag-display.is-text-dense span {
   font-size: 6.5px;
+}
+
+body.single-page-site[data-active-route="materials"] .material-display-filter.card-layout-filter {
+  position: relative;
+  z-index: 2200;
+}
+
+body.single-page-site[data-active-route="materials"] .material-filter-dropdown.is-open {
+  z-index: 2210;
+}
+
+body.single-page-site[data-active-route="materials"] .material-filter-dropdown.is-open .material-filter-multi {
+  z-index: 2220;
+}
+
+body.single-page-site[data-active-route="materials"] .material-card-list {
+  position: relative;
+  z-index: 1;
 }

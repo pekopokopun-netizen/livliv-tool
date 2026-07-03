@@ -109,10 +109,11 @@ let sharedSaveCompletedAt = 0;
 let sharedDataLoadToken = 0;
 const sharedDataChunkSize = 240000;
 const sharedDataChunkFormat = "chunked-json-v1";
-const livlivUpdateNumber = window.LIVLIV_UPDATE_NUMBER || "2026.07.04-08";
+const livlivUpdateNumber = window.LIVLIV_UPDATE_NUMBER || "2026.07.04-10";
 let expDeletePressTimer = null;
 let expDeletePressTarget = null;
 let suppressNextExpClick = false;
+let suppressExperienceLivlySelectUntil = 0;
 let ddEditBackup = null;
 let suppressNextTouchClick = false;
 let activeInfoHost = null;
@@ -10085,6 +10086,39 @@ addNewButton.addEventListener("click", () => {
   openEditor(null);
 });
 
+function suppressExperienceLivlySelectEvent(event, options = {}) {
+  const target = event.target;
+
+  if (
+    activeRoute !== "exp" ||
+    Date.now() > suppressExperienceLivlySelectUntil ||
+    !target?.closest?.(".experience-livly-select, .experience-livly-picker")
+  ) {
+    return false;
+  }
+
+  suppressExperienceLivlySelectUntil = options.keepAlive ? Date.now() + 650 : 0;
+  event.preventDefault();
+  event.stopPropagation();
+  event.stopImmediatePropagation?.();
+  return true;
+}
+
+contentArea.addEventListener("click", event => {
+  suppressExperienceLivlySelectEvent(event);
+}, true);
+
+contentArea.addEventListener("touchend", event => {
+  if (!suppressExperienceLivlySelectEvent(event, { keepAlive: true })) {
+    return;
+  }
+
+  suppressCursorInfoAfterTouch();
+  clearTimeout(longPressTimer);
+  closeTouchInfo();
+  longPressTouchPoint = null;
+}, { passive: false, capture: true });
+
 contentArea.addEventListener("click", event => {
   if (handleEditCopyToolbarClick(event)) {
     return;
@@ -11346,6 +11380,9 @@ contentArea.addEventListener("touchstart", event => {
     }
 
     suppressNextTouchClick = true;
+    if (activeRoute === "exp" && item.classList.contains("experience-livly-select")) {
+      suppressExperienceLivlySelectUntil = Date.now() + 900;
+    }
     stopProbabilityAutoScroll(probabilityDragState);
     removeProbabilityDragGhost(probabilityDragState);
     probabilityDragState?.button?.classList.remove("is-dragging");
