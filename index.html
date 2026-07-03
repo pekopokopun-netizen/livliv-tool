@@ -7,8 +7,6 @@
     <link rel="stylesheet" href="style.css?v=20260703-no-export">
 </head>
 <body class="list-page single-page-site">
-  <!-- deploy check -->
-
   <div class="loading-screen" aria-label="読み込み中">
     <div class="loading-orbit">
       <span></span>
@@ -51,6 +49,15 @@
     <button type="button" data-route="personalityProbability">個性確率計算</button>
     <button type="button" data-route="dd">dd排出量計算</button>
     <button type="button" data-route="exp">経験値計算</button>
+    <section class="menu-auth-panel" id="menuAuthPanel" aria-label="ログイン">
+      <p class="menu-auth-status" id="authStatusText">ログイン確認中</p>
+      <div class="menu-auth-form" id="authLoginForm">
+        <input type="email" id="authEmailInput" autocomplete="email" placeholder="メール">
+        <input type="password" id="authPasswordInput" autocomplete="current-password" placeholder="パスワード">
+        <button type="button" id="authLoginButton">ログイン</button>
+      </div>
+      <button type="button" class="menu-auth-logout" id="authLogoutButton" hidden>ログアウト</button>
+    </section>
     <button type="button" class="menu-edit-mode-button" id="editModeButton" aria-pressed="false">
       <span class="edit-status-light" aria-hidden="true"></span>
       <span class="edit-status-text">編集 OFF</span>

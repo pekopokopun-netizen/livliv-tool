@@ -1227,6 +1227,62 @@ body.single-page-site {
   font-size: 12px;
 }
 
+.single-page-site .menu-auth-panel {
+  margin-top: 8px;
+  padding-top: 10px;
+  border-top: 1px solid #4a4f5b;
+}
+
+.single-page-site .menu-auth-status {
+  margin: 0 0 8px;
+  color: #d8dbe3;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.35;
+  word-break: break-all;
+}
+
+.single-page-site .menu-auth-form {
+  display: grid;
+  gap: 6px;
+}
+
+.single-page-site .menu-auth-form[hidden] {
+  display: none;
+}
+
+.single-page-site .menu-auth-panel input {
+  width: 100%;
+  min-height: 32px;
+  margin: 0;
+  padding: 7px 9px;
+  background: #282b34;
+  border: 1px solid #565b66;
+  border-radius: 6px;
+  color: #f5f2ee;
+  font-size: 12px;
+  box-sizing: border-box;
+}
+
+.single-page-site .menu-auth-panel input::placeholder {
+  color: #8f96a3;
+}
+
+.single-page-site .floating-menu .menu-auth-panel button {
+  min-height: 32px;
+  padding: 7px 9px;
+  font-size: 12px;
+  text-align: center;
+}
+
+.single-page-site .floating-menu .menu-auth-panel button:disabled {
+  opacity: 0.62;
+}
+
+.single-page-site .floating-menu .menu-auth-logout {
+  color: #f0c274;
+}
+
 .edit-status-light {
   width: 12px;
   height: 12px;

@@ -93,6 +93,11 @@ let expTargetLevel = "2";
 let expGrowthType = "normal";
 let expCurrentRebirth = "0";
 let expTargetRebirth = "0";
+let firebaseServices = window.livlivFirebase || null;
+let firebaseAuthReady = false;
+let firebaseAuthSubscribed = false;
+let firebaseUser = null;
+let firebaseAuthError = "";
 let expDeletePressTimer = null;
 let expDeletePressTarget = null;
 let suppressNextExpClick = false;
@@ -205,6 +210,13 @@ const pageTitle = document.getElementById("pageTitle");
 const contentArea = document.getElementById("contentArea");
 const editToolbar = document.getElementById("editToolbar");
 const editModeButton = document.getElementById("editModeButton");
+const menuAuthPanel = document.getElementById("menuAuthPanel");
+const authStatusText = document.getElementById("authStatusText");
+const authLoginForm = document.getElementById("authLoginForm");
+const authEmailInput = document.getElementById("authEmailInput");
+const authPasswordInput = document.getElementById("authPasswordInput");
+const authLoginButton = document.getElementById("authLoginButton");
+const authLogoutButton = document.getElementById("authLogoutButton");
 const addNewButton = document.getElementById("addNewButton");
 const itemModal = document.getElementById("itemModal");
 const modalTitle = document.getElementById("modalTitle");
@@ -6364,6 +6376,131 @@ function toggleEditMode() {
   renderView();
 }
 
+function canUseEditMode() {
+  return Boolean(firebaseUser);
+}
+
+function updateAuthUi() {
+  if (!menuAuthPanel) {
+    return;
+  }
+
+  const isLoggedIn = Boolean(firebaseUser);
+  const statusText = firebaseAuthError ||
+    (isLoggedIn
+      ? `ログイン中 ${firebaseUser.email || ""}`.trim()
+      : firebaseAuthReady
+        ? "ログインしていません"
+        : "ログイン確認中");
+
+  authStatusText.textContent = statusText;
+  authLoginForm.hidden = isLoggedIn;
+  authLogoutButton.hidden = !isLoggedIn;
+  editModeButton.hidden = !isLoggedIn;
+
+  if (!isLoggedIn && editMode) {
+    toggleEditMode();
+  }
+}
+
+function setupFirebaseAuth(services) {
+  if (!services) {
+    updateAuthUi();
+    return;
+  }
+
+  if (firebaseAuthSubscribed) {
+    updateAuthUi();
+    return;
+  }
+
+  firebaseServices = services;
+  firebaseAuthReady = false;
+  firebaseAuthSubscribed = true;
+  updateAuthUi();
+
+  services.onAuthStateChanged(services.auth, user => {
+    firebaseAuthReady = true;
+    firebaseUser = user;
+    firebaseAuthError = "";
+    updateAuthUi();
+  }, () => {
+    firebaseAuthReady = true;
+    firebaseUser = null;
+    firebaseAuthError = "ログイン状態を確認できませんでした";
+    updateAuthUi();
+  });
+}
+
+function initializeFirebaseAuthUi() {
+  if (window.livlivFirebase) {
+    setupFirebaseAuth(window.livlivFirebase);
+    return;
+  }
+
+  window.addEventListener("livliv:firebase-ready", event => {
+    setupFirebaseAuth(event.detail);
+  }, { once: true });
+
+  updateAuthUi();
+}
+
+async function loginEditor() {
+  if (!firebaseServices) {
+    firebaseAuthError = "ログイン機能を読み込み中です";
+    updateAuthUi();
+    return;
+  }
+
+  const email = authEmailInput.value.trim();
+  const password = authPasswordInput.value;
+
+  if (!email || !password) {
+    firebaseAuthError = "メールとパスワードを入力してください";
+    updateAuthUi();
+    return;
+  }
+
+  authLoginButton.disabled = true;
+  firebaseAuthError = "";
+  updateAuthUi();
+
+  try {
+    await firebaseServices.signInWithEmailAndPassword(firebaseServices.auth, email, password);
+    authPasswordInput.value = "";
+  } catch (error) {
+    firebaseAuthError = "ログインできませんでした";
+  } finally {
+    authLoginButton.disabled = false;
+    updateAuthUi();
+  }
+}
+
+async function logoutEditor() {
+  if (!firebaseServices) {
+    return;
+  }
+
+  authLogoutButton.disabled = true;
+
+  try {
+    await firebaseServices.signOut(firebaseServices.auth);
+  } finally {
+    authLogoutButton.disabled = false;
+    updateAuthUi();
+  }
+}
+
+function handleEditModeButtonClick() {
+  if (!canUseEditMode()) {
+    firebaseAuthError = "ログインすると編集できます";
+    updateAuthUi();
+    return;
+  }
+
+  toggleEditMode();
+}
+
 function findItem(id) {
   if (!isListRoute()) {
     return null;
@@ -9214,7 +9351,17 @@ routeButtons.forEach(button => {
   });
 });
 
-editModeButton.addEventListener("click", toggleEditMode);
+editModeButton.addEventListener("click", handleEditModeButtonClick);
+authLoginButton.addEventListener("click", loginEditor);
+authLogoutButton.addEventListener("click", logoutEditor);
+
+[authEmailInput, authPasswordInput].forEach(input => {
+  input.addEventListener("keydown", event => {
+    if (event.key === "Enter") {
+      loginEditor();
+    }
+  });
+});
 
 addNewButton.addEventListener("click", () => {
   openEditor(null);
@@ -10600,6 +10747,7 @@ window.addEventListener("hashchange", () => {
   switchRoute(getInitialRoute());
 });
 
+initializeFirebaseAuthUi();
 renderView();
 
 setTimeout(() => {
