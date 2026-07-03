@@ -99,7 +99,7 @@ let firebaseAuthSubscribed = false;
 let firebaseUser = null;
 let firebaseAuthError = "";
 let sharedDataStatus = "共有データを準備中";
-const livlivUpdateNumber = window.LIVLIV_UPDATE_NUMBER || "2026.07.03-04";
+const livlivUpdateNumber = window.LIVLIV_UPDATE_NUMBER || "2026.07.03-05";
 let expDeletePressTimer = null;
 let expDeletePressTarget = null;
 let suppressNextExpClick = false;
@@ -10871,12 +10871,14 @@ contentArea.addEventListener("touchstart", event => {
 contentArea.addEventListener("touchend", () => {
   suppressCursorInfoAfterTouch();
   clearTimeout(longPressTimer);
+  closeTouchInfo();
   longPressTouchPoint = null;
 });
 
 contentArea.addEventListener("touchcancel", () => {
   suppressCursorInfoAfterTouch();
   clearTimeout(longPressTimer);
+  closeTouchInfo();
   longPressTouchPoint = null;
 });
 
