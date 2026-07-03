@@ -99,13 +99,14 @@ let firebaseAuthSubscribed = false;
 let firebaseUser = null;
 let firebaseAuthError = "";
 let sharedDataStatus = "共有データを準備中";
-const livlivUpdateNumber = window.LIVLIV_UPDATE_NUMBER || "2026.07.03-02";
+const livlivUpdateNumber = window.LIVLIV_UPDATE_NUMBER || "2026.07.03-04";
 let expDeletePressTimer = null;
 let expDeletePressTarget = null;
 let suppressNextExpClick = false;
 let ddEditBackup = null;
 let suppressNextTouchClick = false;
 let activeInfoHost = null;
+let suppressCursorInfoUntil = 0;
 
 if (!["rate", "content", "all"].includes(personalityDisplayMode)) {
   personalityDisplayMode = "rate";
@@ -5221,11 +5222,36 @@ function saveDdEdits() {
 
 function canUseCursorPanel(event) {
   const pointerType = event && "pointerType" in event ? event.pointerType : "";
-  return !pointerType || pointerType === "mouse";
+  const eventType = event?.type || "";
+
+  if (pointerType && pointerType !== "mouse") {
+    return false;
+  }
+
+  if (
+    Date.now() < suppressCursorInfoUntil &&
+    (!pointerType || eventType.startsWith("mouse") || eventType.startsWith("pointer"))
+  ) {
+    return false;
+  }
+
+  if (
+    !pointerType &&
+    window.matchMedia &&
+    window.matchMedia("(hover: none), (pointer: coarse)").matches
+  ) {
+    return false;
+  }
+
+  return true;
 }
 
 function isFinePointerDevice() {
   return true;
+}
+
+function suppressCursorInfoAfterTouch(duration = 900) {
+  suppressCursorInfoUntil = Math.max(suppressCursorInfoUntil, Date.now() + duration);
 }
 
 function positionInfoPanel(event, panel) {
@@ -10786,6 +10812,7 @@ contentArea.addEventListener("pointerleave", event => {
 });
 
 contentArea.addEventListener("touchstart", event => {
+  suppressCursorInfoAfterTouch();
   const canShowBulkUploadInfo = editMode && Boolean(event.target.closest(".bulk-file-picker"));
 
   if (editMode && !canShowBulkUploadInfo) {
@@ -10842,11 +10869,20 @@ contentArea.addEventListener("touchstart", event => {
 });
 
 contentArea.addEventListener("touchend", () => {
+  suppressCursorInfoAfterTouch();
+  clearTimeout(longPressTimer);
+  longPressTouchPoint = null;
+});
+
+contentArea.addEventListener("touchcancel", () => {
+  suppressCursorInfoAfterTouch();
   clearTimeout(longPressTimer);
   longPressTouchPoint = null;
 });
 
 contentArea.addEventListener("touchmove", event => {
+  suppressCursorInfoAfterTouch();
+
   if (!longPressTouchPoint) {
     clearTimeout(longPressTimer);
     return;

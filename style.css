@@ -7887,3 +7887,61 @@ body.single-page-site[data-active-route="materials"] .material-card-header .mate
     font-size: 16px !important;
   }
 }
+
+.single-page-site .livly-card-list .livly-detail-card {
+  --livly-open-title-stack: max(42px, clamp(38px, 4vw, 54px));
+  --livly-visual-gap: 8px;
+  --livly-open-body-height: calc(var(--livly-open-title-stack) + var(--livly-open-image-size) + var(--livly-visual-gap));
+}
+
+.single-page-site .livly-card-list .livly-detail-card.is-open-card .livly-card-header,
+.is-edit-mode.single-page-site .livly-card-list .livly-detail-card .livly-card-header {
+  align-items: center;
+  overflow: hidden;
+}
+
+.single-page-site .livly-card-list .livly-detail-card.is-open-card .livly-visual-column,
+.is-edit-mode.single-page-site .livly-card-list .livly-detail-card .livly-visual-column {
+  row-gap: var(--livly-visual-gap);
+}
+
+.single-page-site .livly-card-display-toggle {
+  align-self: center;
+  margin-top: 0;
+}
+
+@media (max-width: 640px) {
+  .single-page-site .livly-card-list .livly-detail-card {
+    --livly-open-title-stack: clamp(42px, 10vw, 48px);
+    --livly-visual-gap: 9px;
+  }
+}
+
+@media (hover: none), (pointer: coarse), (max-width: 640px) {
+  .single-page-site:not(.is-edit-mode) .list-item:not(.is-open):not(.is-info-active) .info-popover,
+  .single-page-site:not(.is-edit-mode) .livly-display-field:not(.is-open):not(.is-info-active) > .info-popover,
+  .single-page-site:not(.is-edit-mode) .material-name-info-host:not(.is-open):not(.is-info-active) .info-popover,
+  .single-page-site:not(.is-edit-mode) .probability-choice-card:not(.is-open):not(.is-info-active) .info-popover,
+  .single-page-site:not(.is-edit-mode) .probability-result-card:not(.is-open):not(.is-info-active) .info-popover,
+  .single-page-site:not(.is-edit-mode) .experience-column-head:not(.is-open):not(.is-info-active) .info-popover,
+  .single-page-site:not(.is-edit-mode) .bulk-file-picker:not(.is-open):not(.is-info-active) .info-popover {
+    display: none !important;
+  }
+
+  .single-page-site:not(.is-edit-mode) .list-item.is-open .info-popover,
+  .single-page-site:not(.is-edit-mode) .list-item.is-info-active .info-popover,
+  .single-page-site:not(.is-edit-mode) .livly-display-field.is-open > .info-popover,
+  .single-page-site:not(.is-edit-mode) .livly-display-field.is-info-active > .info-popover,
+  .single-page-site:not(.is-edit-mode) .material-name-info-host.is-open .info-popover,
+  .single-page-site:not(.is-edit-mode) .material-name-info-host.is-info-active .info-popover,
+  .single-page-site:not(.is-edit-mode) .probability-choice-card.is-open .info-popover,
+  .single-page-site:not(.is-edit-mode) .probability-choice-card.is-info-active .info-popover,
+  .single-page-site:not(.is-edit-mode) .probability-result-card.is-open .info-popover,
+  .single-page-site:not(.is-edit-mode) .probability-result-card.is-info-active .info-popover,
+  .single-page-site:not(.is-edit-mode) .experience-column-head.is-open .info-popover,
+  .single-page-site:not(.is-edit-mode) .experience-column-head.is-info-active .info-popover,
+  .single-page-site:not(.is-edit-mode) .bulk-file-picker.is-open .info-popover,
+  .single-page-site:not(.is-edit-mode) .bulk-file-picker.is-info-active .info-popover {
+    display: block !important;
+  }
+}
