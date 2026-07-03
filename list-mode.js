@@ -30,6 +30,7 @@ let livlyColumnCount = readCardColumnCount("livlyColumnCount");
 let materialColumnCount = readCardColumnCount("materialColumnCount");
 let materialVisibleTags = readMaterialVisibleTags();
 let materialVisibleSeriesTags = readMaterialVisibleSeriesTags().slice(0, 1);
+let materialTagFilterExpanded = false;
 let materialSortField = localStorage.getItem("materialSortField") || "";
 let materialSortDirection = localStorage.getItem("materialSortDirection") || "desc";
 let materialCardDisplayModes = readMaterialCardDisplayModes();
@@ -108,7 +109,7 @@ let sharedSaveCompletedAt = 0;
 let sharedDataLoadToken = 0;
 const sharedDataChunkSize = 240000;
 const sharedDataChunkFormat = "chunked-json-v1";
-const livlivUpdateNumber = window.LIVLIV_UPDATE_NUMBER || "2026.07.04-05";
+const livlivUpdateNumber = window.LIVLIV_UPDATE_NUMBER || "2026.07.04-06";
 let expDeletePressTimer = null;
 let expDeletePressTarget = null;
 let suppressNextExpClick = false;
@@ -643,19 +644,44 @@ function renderBulkImageUpload(route) {
 
 function renderMaterialTagFilter() {
   const selectedTags = new Set(materialVisibleTags);
+  const summary = materialTagFilterSummary();
 
   return `
     <div class="material-filter-row" aria-label="素材タグフィルター">
       <span class="material-filter-label">タグ</span>
-      <div class="material-filter-multi" aria-label="素材タグフィルター">
-        <button type="button" class="material-filter-chip ${materialVisibleTags.length ? "" : "is-active"}" data-material-filter-all aria-pressed="${materialVisibleTags.length ? "false" : "true"}">全部</button>
-        ${materialTagOptions.map(tag => `
-          <button type="button" class="material-filter-chip ${selectedTags.has(tag) ? "is-active" : ""}" data-material-filter-tag="${escapeHtml(tag)}" aria-pressed="${selectedTags.has(tag) ? "true" : "false"}">${escapeHtml(tag)}</button>
-        `).join("")}
-        <button type="button" class="material-filter-chip ${selectedTags.has(materialNoTagFilterValue) ? "is-active" : ""}" data-material-filter-tag="${materialNoTagFilterValue}" aria-pressed="${selectedTags.has(materialNoTagFilterValue) ? "true" : "false"}">タグなし</button>
+      <div class="material-filter-dropdown ${materialTagFilterExpanded ? "is-open" : ""}" data-material-filter-dropdown>
+        <button type="button" class="material-filter-summary" data-material-filter-toggle aria-expanded="${materialTagFilterExpanded ? "true" : "false"}">
+          <span>${escapeHtml(summary.label)}</span>
+          ${summary.moreCount ? `<em aria-label="他${summary.moreCount}件">+${summary.moreCount}</em>` : ""}
+          <i aria-hidden="true"></i>
+        </button>
+        ${materialTagFilterExpanded ? `
+          <div class="material-filter-multi" aria-label="素材タグフィルター">
+            <button type="button" class="material-filter-chip ${materialVisibleTags.length ? "" : "is-active"}" data-material-filter-all aria-pressed="${materialVisibleTags.length ? "false" : "true"}">全部</button>
+            ${materialTagOptions.map(tag => `
+              <button type="button" class="material-filter-chip ${selectedTags.has(tag) ? "is-active" : ""}" data-material-filter-tag="${escapeHtml(tag)}" aria-pressed="${selectedTags.has(tag) ? "true" : "false"}">${escapeHtml(tag)}</button>
+            `).join("")}
+            <button type="button" class="material-filter-chip ${selectedTags.has(materialNoTagFilterValue) ? "is-active" : ""}" data-material-filter-tag="${materialNoTagFilterValue}" aria-pressed="${selectedTags.has(materialNoTagFilterValue) ? "true" : "false"}">タグなし</button>
+          </div>
+        ` : ""}
       </div>
     </div>
   `;
+}
+
+function materialTagFilterLabel(tag) {
+  return tag === materialNoTagFilterValue ? "タグなし" : tag;
+}
+
+function materialTagFilterSummary() {
+  if (!materialVisibleTags.length) {
+    return { label: "全部", moreCount: 0 };
+  }
+
+  return {
+    label: materialTagFilterLabel(materialVisibleTags[0]),
+    moreCount: Math.max(0, materialVisibleTags.length - 1)
+  };
 }
 
 function renderMaterialSeriesFilter() {
@@ -10290,9 +10316,19 @@ contentArea.addEventListener("click", event => {
     return;
   }
 
+  const materialFilterToggleButton = event.target.closest("[data-material-filter-toggle]");
+
+  if (materialFilterToggleButton && activeRoute === "materials") {
+    materialTagFilterExpanded = !materialTagFilterExpanded;
+    closeTouchInfo();
+    renderView();
+    return;
+  }
+
   const materialFilterAllButton = event.target.closest("[data-material-filter-all]");
 
   if (materialFilterAllButton && activeRoute === "materials") {
+    materialTagFilterExpanded = false;
     setMaterialVisibleTag("");
     return;
   }

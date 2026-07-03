@@ -8154,6 +8154,75 @@ body.single-page-site[data-active-route="materials"] .material-card-header .mate
   gap: 3px;
 }
 
+.single-page-site .material-filter-dropdown {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+}
+
+.single-page-site .material-filter-summary {
+  width: 100%;
+  min-width: 0;
+  height: 24px;
+  margin: 0;
+  padding: 2px 7px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 5px;
+  background: #1f2027;
+  border: 1px solid #565b66;
+  border-radius: 7px;
+  color: #f5f2ee;
+  font-size: 10.5px;
+  font-weight: 850;
+  line-height: 1.1;
+}
+
+.single-page-site .material-filter-summary span {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: clip;
+}
+
+.single-page-site .material-filter-summary em {
+  min-width: 20px;
+  padding: 1px 5px;
+  background: #e4b86d;
+  border-radius: 999px;
+  color: #1f2027;
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 900;
+  text-align: center;
+}
+
+.single-page-site .material-filter-summary i {
+  width: 0;
+  height: 0;
+  border-right: 4px solid transparent;
+  border-left: 4px solid transparent;
+  border-top: 5px solid #e4b86d;
+  transition: transform 140ms ease;
+}
+
+.single-page-site .material-filter-dropdown.is-open .material-filter-summary i {
+  transform: rotate(180deg);
+}
+
+.single-page-site .material-filter-dropdown .material-filter-multi {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 80;
+  padding: 5px;
+  background: #242730;
+  border: 1px solid #50545f;
+  border-radius: 8px;
+  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.34);
+}
+
 .single-page-site .material-filter-multi .material-filter-chip {
   flex: 0 1 auto;
   min-width: 0;
