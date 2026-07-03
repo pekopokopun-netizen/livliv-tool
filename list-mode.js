@@ -109,11 +109,12 @@ let sharedSaveCompletedAt = 0;
 let sharedDataLoadToken = 0;
 const sharedDataChunkSize = 240000;
 const sharedDataChunkFormat = "chunked-json-v1";
-const livlivUpdateNumber = window.LIVLIV_UPDATE_NUMBER || "2026.07.04-10";
+const livlivUpdateNumber = window.LIVLIV_UPDATE_NUMBER || "2026.07.04-11";
 let expDeletePressTimer = null;
 let expDeletePressTarget = null;
 let suppressNextExpClick = false;
-let suppressExperienceLivlySelectUntil = 0;
+let suppressLivlyImageSelectUntil = 0;
+let suppressNextLivlyImageSelectClick = false;
 let ddEditBackup = null;
 let suppressNextTouchClick = false;
 let activeInfoHost = null;
@@ -5113,21 +5114,27 @@ function renderDdHouseRow(row) {
     <div class="dd-house-row" data-dd-house-id="${escapeHtml(row.id)}">
       <label class="dd-house-livly-picker">
         <span>リブリー</span>
-        <div class="experience-livly-select">
+        <div class="experience-livly-select dd-livly-select">
           <div class="experience-livly-preview">${selectedLivly ? renderLivlyImage(selectedLivly, title) : "?"}</div>
-          <select data-dd-house-field="livlyId">
+          <select data-dd-house-field="livlyId" aria-label="リブリー ${escapeHtml(title)}">
             <option value="">未選択</option>
             ${appData.livlies.map((livly, index) => `
               <option value="${escapeHtml(livly.id)}" ${row.livlyId === livly.id ? "selected" : ""}>${escapeHtml(livlyTitle(livly, index))}</option>
             `).join("")}
           </select>
+          <div class="info-popover experience-livly-popover" role="dialog" aria-label="${escapeHtml(title)}の情報">
+            <div class="compact-personality-panel">
+              <h2>リブリー</h2>
+              <p>${escapeHtml(title)}</p>
+            </div>
+          </div>
         </div>
       </label>
-      <label>
+      <label class="dd-house-level-field">
         <span>レベル</span>
         <input type="text" inputmode="numeric" data-dd-house-field="level" value="${escapeHtml(row.level)}">
       </label>
-      <label>
+      <label class="dd-house-variant-field">
         <span>個性</span>
         <select data-dd-house-field="variant">
           ${ddVariantOptions.map(option => `
@@ -5135,16 +5142,16 @@ function renderDdHouseRow(row) {
           `).join("")}
         </select>
       </label>
-      <label>
+      <label class="dd-house-rebirth-field">
         <span>転生</span>
         <select data-dd-house-field="rebirth">
           ${rebirthOptions().map(value => `
-            <option value="${value}" ${rebirth === value ? "selected" : ""}>${value}回</option>
+            <option value="${value}" ${rebirth === value ? "selected" : ""}>${value}</option>
           `).join("")}
         </select>
       </label>
-      <strong>${ddRateForHouseRow(row).toLocaleString("ja-JP")} dd/h</strong>
-      <button type="button" class="personality-delete-button" data-action="delete-dd-house-row" aria-label="削除">🗑</button>
+      <strong class="dd-house-rate">${ddRateForHouseRow(row).toLocaleString("ja-JP")} dd/h</strong>
+      <button type="button" class="personality-delete-button dd-house-delete" data-action="delete-dd-house-row" aria-label="削除">🗑</button>
     </div>
   `;
 }
@@ -10086,18 +10093,31 @@ addNewButton.addEventListener("click", () => {
   openEditor(null);
 });
 
-function suppressExperienceLivlySelectEvent(event, options = {}) {
+function suppressLivlyImageSelectEvent(event, options = {}) {
   const target = event.target;
+  const isImageSelectTarget = target?.closest?.(".experience-livly-select, .experience-livly-picker");
+  const shouldSuppressTouchEnd = options.kind === "touchend" && Date.now() <= suppressLivlyImageSelectUntil;
+  const shouldSuppressClick = options.kind === "click" && suppressNextLivlyImageSelectClick;
 
   if (
-    activeRoute !== "exp" ||
-    Date.now() > suppressExperienceLivlySelectUntil ||
-    !target?.closest?.(".experience-livly-select, .experience-livly-picker")
+    !["exp", "dd"].includes(activeRoute) ||
+    !isImageSelectTarget ||
+    (!shouldSuppressTouchEnd && !shouldSuppressClick)
   ) {
     return false;
   }
 
-  suppressExperienceLivlySelectUntil = options.keepAlive ? Date.now() + 650 : 0;
+  if (shouldSuppressTouchEnd) {
+    suppressNextLivlyImageSelectClick = true;
+    suppressLivlyImageSelectUntil = 0;
+    window.setTimeout(() => {
+      suppressNextLivlyImageSelectClick = false;
+    }, 250);
+  } else {
+    suppressNextLivlyImageSelectClick = false;
+    suppressLivlyImageSelectUntil = 0;
+  }
+
   event.preventDefault();
   event.stopPropagation();
   event.stopImmediatePropagation?.();
@@ -10105,11 +10125,11 @@ function suppressExperienceLivlySelectEvent(event, options = {}) {
 }
 
 contentArea.addEventListener("click", event => {
-  suppressExperienceLivlySelectEvent(event);
+  suppressLivlyImageSelectEvent(event, { kind: "click" });
 }, true);
 
 contentArea.addEventListener("touchend", event => {
-  if (!suppressExperienceLivlySelectEvent(event, { keepAlive: true })) {
+  if (!suppressLivlyImageSelectEvent(event, { kind: "touchend" })) {
     return;
   }
 
@@ -11380,8 +11400,8 @@ contentArea.addEventListener("touchstart", event => {
     }
 
     suppressNextTouchClick = true;
-    if (activeRoute === "exp" && item.classList.contains("experience-livly-select")) {
-      suppressExperienceLivlySelectUntil = Date.now() + 900;
+    if (["exp", "dd"].includes(activeRoute) && item.classList.contains("experience-livly-select")) {
+      suppressLivlyImageSelectUntil = Date.now() + 700;
     }
     stopProbabilityAutoScroll(probabilityDragState);
     removeProbabilityDragGhost(probabilityDragState);
