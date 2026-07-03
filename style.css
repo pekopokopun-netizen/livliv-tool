@@ -8731,3 +8731,65 @@ body.single-page-site[data-active-route="materials"] .material-card-title-text {
   text-overflow: clip;
   transform: none !important;
 }
+
+body.single-page-site[data-active-route="materials"] .material-card-list.is-many-columns {
+  gap: clamp(5px, 0.55vw, 8px);
+  overflow: visible;
+  align-items: start;
+}
+
+body.single-page-site[data-active-route="materials"] .material-card-list.is-many-columns .material-detail-card {
+  min-width: 0;
+  overflow: hidden;
+}
+
+body.single-page-site[data-active-route="materials"] .material-card-list.is-many-columns .material-card-header {
+  gap: 2px 4px;
+  overflow: hidden;
+}
+
+body.single-page-site[data-active-route="materials"] .material-card-list.is-many-columns .material-card-tag-row,
+body.single-page-site[data-active-route="materials"] .material-card-list.is-many-columns .material-card-series-row {
+  min-height: 11px;
+  max-height: 13px;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden !important;
+}
+
+body.single-page-site[data-active-route="materials"] .material-card-list.is-many-columns .material-card-header .material-tag-display,
+body.single-page-site[data-active-route="materials"] .material-card-list.is-many-columns .material-card-header .material-tag-display.is-text-medium,
+body.single-page-site[data-active-route="materials"] .material-card-list.is-many-columns .material-card-header .material-tag-display.is-text-long,
+body.single-page-site[data-active-route="materials"] .material-card-list.is-many-columns .material-card-header .material-tag-display.is-text-dense {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0;
+  height: 12px;
+  min-height: 0;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 1px;
+  overflow: hidden !important;
+  transform: none !important;
+}
+
+body.single-page-site[data-active-route="materials"] .material-card-list.is-many-columns .material-card-header .material-tag-display span,
+body.single-page-site[data-active-route="materials"] .material-card-list.is-many-columns .material-card-header .material-tag-display span.is-text-medium,
+body.single-page-site[data-active-route="materials"] .material-card-list.is-many-columns .material-card-header .material-tag-display span.is-text-long,
+body.single-page-site[data-active-route="materials"] .material-card-list.is-many-columns .material-card-header .material-tag-display span.is-text-dense {
+  min-width: 0;
+  max-width: 100%;
+  padding: 1px 2px;
+  flex: 1 1 0;
+  overflow: hidden !important;
+  white-space: nowrap;
+  text-overflow: clip;
+  font-size: 6px;
+  line-height: 1;
+  transform: none !important;
+}
+
+body.single-page-site[data-active-route="materials"] .material-card-list.is-many-columns .material-card-title,
+body.single-page-site[data-active-route="materials"] .material-card-list.is-many-columns .material-card-title-text {
+  line-height: 1;
+}

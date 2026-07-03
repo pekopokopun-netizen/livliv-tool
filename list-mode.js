@@ -110,7 +110,7 @@ let sharedSaveCompletedAt = 0;
 let sharedDataLoadToken = 0;
 const sharedDataChunkSize = 240000;
 const sharedDataChunkFormat = "chunked-json-v1";
-const livlivUpdateNumber = window.LIVLIV_UPDATE_NUMBER || "2026.07.04-14";
+const livlivUpdateNumber = window.LIVLIV_UPDATE_NUMBER || "2026.07.04-17";
 let expDeletePressTimer = null;
 let expDeletePressTarget = null;
 let suppressNextExpClick = false;
@@ -562,7 +562,7 @@ function renderMaterialView(items) {
     ${renderMaterialDisplayFilter()}
     ${visibleItems.length
       ? `
-        <section class="material-card-list" ${cardColumnStyle(materialColumnCount)}>
+        <section class="material-card-list ${materialColumnCount >= 6 ? "is-many-columns" : ""}" ${cardColumnStyle(materialColumnCount)}>
           ${visibleItems.map((item, index) => renderMaterialCard(item, index)).join("")}
         </section>
       `
@@ -5782,13 +5782,54 @@ function startTouchInfoDrag(host) {
     return;
   }
 
-  touchInfoDragState = { host };
+  touchInfoDragState = {
+    frame: 0,
+    host,
+    pendingPoint: null
+  };
   document.body.classList.add("is-touch-info-dragging");
 }
 
 function finishTouchInfoDrag() {
+  if (touchInfoDragState?.frame) {
+    cancelAnimationFrame(touchInfoDragState.frame);
+  }
+
   touchInfoDragState = null;
   document.body.classList.remove("is-touch-info-dragging");
+}
+
+function updateTouchInfoDragPanel() {
+  const state = touchInfoDragState;
+
+  if (!state) {
+    return;
+  }
+
+  state.frame = 0;
+  const point = state.pendingPoint;
+
+  if (!point) {
+    return;
+  }
+
+  const nextHost = findInfoPanelHostAtPoint(point, null);
+  const targetHost = canStartTouchInfoDrag(nextHost) ? nextHost : state.host;
+
+  if (!canStartTouchInfoDrag(targetHost)) {
+    return;
+  }
+
+  const panel = targetHost.querySelector(".info-popover");
+
+  if (!panel) {
+    return;
+  }
+
+  targetHost.classList.add("is-open");
+  activeTouchItem = targetHost;
+  state.host = targetHost;
+  positionInfoPanel(point, panel);
 }
 
 function showTouchInfoDragPanel(touch) {
@@ -5796,28 +5837,16 @@ function showTouchInfoDragPanel(touch) {
     return;
   }
 
-  const point = {
+  touchInfoDragState.pendingPoint = {
     clientX: touch.clientX,
     clientY: touch.clientY,
     pointerType: "touch",
     target: document.elementFromPoint(touch.clientX, touch.clientY)
   };
-  const nextHost = findInfoPanelHostAtPoint(point, null);
 
-  if (!canStartTouchInfoDrag(nextHost)) {
-    return;
+  if (!touchInfoDragState.frame) {
+    touchInfoDragState.frame = requestAnimationFrame(updateTouchInfoDragPanel);
   }
-
-  const panel = nextHost.querySelector(".info-popover");
-
-  if (!panel) {
-    return;
-  }
-
-  nextHost.classList.add("is-open");
-  activeTouchItem = nextHost;
-  touchInfoDragState.host = nextHost;
-  positionInfoPanel(point, panel);
 }
 
 function restoreCursorInfoPanelAfterRender(event) {
@@ -7456,6 +7485,10 @@ function applyCardColumnCount(route, count) {
 
   if (list) {
     list.style.setProperty("--card-columns", normalizedCount);
+
+    if (!isLivlyRoute) {
+      list.classList.toggle("is-many-columns", normalizedCount >= 6);
+    }
   }
 
   if (isLivlyRoute) {
