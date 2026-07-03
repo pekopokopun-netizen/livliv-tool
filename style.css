@@ -4469,9 +4469,11 @@ body.single-page-site {
   min-height: 92px;
   padding: 8px;
   display: grid;
-  grid-template-columns: 54px minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto 54px;
   align-items: center;
-  gap: 10px;
+  justify-items: center;
+  gap: 7px;
   background: #282b34;
   border: 1px solid #3d424c;
   border-radius: 8px;
@@ -4553,6 +4555,18 @@ body.single-page-site {
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 8px;
+  padding: 4px 6px;
+  border-radius: 999px;
+  transition: background 140ms ease, color 140ms ease;
+}
+
+.single-page-site .experience-personality-choices label:has(input:checked) {
+  background: #e4b86d;
+  color: #1f2027;
+}
+
+.single-page-site .experience-personality-choices label:has(input:checked) span {
+  color: #1f2027;
 }
 
 .single-page-site .experience-personality-choices input {
@@ -4577,7 +4591,7 @@ body.single-page-site {
 .single-page-site .experience-personality-choices input:checked + i {
   background: #e4b86d;
   border-color: #e4b86d;
-  box-shadow: inset 0 0 0 4px #282b34;
+  box-shadow: none;
 }
 
 .single-page-site .experience-table-wrap {
@@ -8052,8 +8066,8 @@ body.single-page-site[data-active-route="materials"] .material-card-header .mate
 
 .single-page-site .livly-crop-nudge {
   position: absolute;
-  z-index: 2;
-  width: 28px;
+  z-index: 4;
+  width: 26px;
   height: 24px;
   min-width: 0;
   margin: 0;
@@ -8072,27 +8086,47 @@ body.single-page-site[data-active-route="materials"] .material-card-header .mate
 }
 
 .single-page-site .livly-crop-nudge.is-up {
-  top: 3px;
+  top: -31px;
   left: 50%;
   transform: translateX(-50%);
 }
 
 .single-page-site .livly-crop-nudge.is-right {
   top: 50%;
-  right: 3px;
+  right: -32px;
   transform: translateY(-50%);
 }
 
 .single-page-site .livly-crop-nudge.is-down {
-  bottom: 3px;
+  bottom: -31px;
   left: 50%;
   transform: translateX(-50%);
 }
 
 .single-page-site .livly-crop-nudge.is-left {
   top: 50%;
-  left: 3px;
+  left: -32px;
   transform: translateY(-50%);
+}
+
+.single-page-site .livly-crop-nudge.is-up-left {
+  top: -31px;
+  left: -31px;
+}
+
+.single-page-site .livly-crop-nudge.is-up-right {
+  top: -31px;
+  right: -31px;
+}
+
+.single-page-site .livly-crop-nudge.is-down-right {
+  right: -31px;
+  bottom: -31px;
+}
+
+.single-page-site .livly-crop-nudge.is-down-left {
+  bottom: -31px;
+  left: -31px;
 }
 
 .single-page-site .livly-crop-nudge:hover,
@@ -8108,15 +8142,29 @@ body.single-page-site[data-active-route="materials"] .material-card-header .mate
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 5px;
+  gap: 3px;
 }
 
 .single-page-site .material-filter-multi .material-filter-chip {
   flex: 0 1 auto;
   min-width: 0;
-  min-height: 28px;
-  padding: 4px 8px;
+  min-height: 22px;
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-size: 10.5px;
+  line-height: 1.15;
   white-space: nowrap;
+}
+
+.single-page-site .material-tag-display {
+  gap: 3px;
+}
+
+.single-page-site .material-tag-display span {
+  padding: 2px 6px;
+  border-radius: 5px;
+  font-size: 10.5px;
+  line-height: 1.15;
 }
 
 @media (max-width: 640px) {
@@ -8151,8 +8199,9 @@ body.single-page-site[data-active-route="materials"] .material-card-header .mate
   .single-page-site .experience-livly-select {
     min-height: 64px;
     padding: 5px;
-    grid-template-columns: 34px minmax(0, 1fr);
-    gap: 5px;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: 30px 34px;
+    gap: 4px;
   }
 
   .single-page-site .experience-livly-preview {
@@ -8203,6 +8252,7 @@ body.single-page-site[data-active-route="materials"] .material-card-header .mate
 
   .single-page-site .experience-personality-choices label {
     gap: 4px;
+    padding: 3px 5px;
     font-size: 11px;
     line-height: 1.1;
   }
@@ -8225,7 +8275,8 @@ body.single-page-site[data-active-route="materials"] .material-card-header .mate
   }
 
   .single-page-site .experience-livly-select {
-    grid-template-columns: 28px minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: 30px 28px;
     padding: 4px;
   }
 

@@ -105,7 +105,7 @@ let sharedDataListenerStarted = false;
 let sharedDataUnsubscribe = null;
 let sharedSaveProgressTimer = null;
 let sharedSaveCompletedAt = 0;
-const livlivUpdateNumber = window.LIVLIV_UPDATE_NUMBER || "2026.07.04-01";
+const livlivUpdateNumber = window.LIVLIV_UPDATE_NUMBER || "2026.07.04-03";
 let expDeletePressTimer = null;
 let expDeletePressTarget = null;
 let suppressNextExpClick = false;
@@ -4540,13 +4540,13 @@ function renderExperienceLivlyPicker() {
     <label class="experience-livly-picker">
       <span>リブリー</span>
       <div class="experience-livly-select">
-        <div class="experience-livly-preview">${selectedLivly ? renderLivlyImage(selectedLivly, title) : "?"}</div>
         <select data-exp-input="livlyId">
           <option value="">未選択</option>
           ${appData.livlies.map(item => `
             <option value="${escapeHtml(item.id)}" ${expSelectedLivlyId === item.id ? "selected" : ""}>${escapeHtml(livlyTitle(item))}</option>
           `).join("")}
         </select>
+        <div class="experience-livly-preview">${selectedLivly ? renderLivlyImage(selectedLivly, title) : "?"}</div>
       </div>
     </label>
   `;
@@ -4575,7 +4575,7 @@ function renderExperiencePoint(label, rebirthField, rebirthValue, levelField, le
         <span>転生</span>
         <select data-exp-input="${escapeHtml(rebirthField)}">
           ${rebirthOptions().map(value => `
-            <option value="${value}" ${rebirthValue === value ? "selected" : ""}>${value}回</option>
+            <option value="${value}" ${rebirthValue === value ? "selected" : ""}>${value}</option>
           `).join("")}
         </select>
       </label>
@@ -7872,9 +7872,13 @@ function renderLivlyCropTool(item, itemType = "livly") {
         <span class="livly-crop-box" data-livly-crop-box style="${cropStyle}">
           ${["nw", "ne", "sw", "se"].map(handle => `<i class="${livlyCropPinnedLoupeHandle === handle ? "is-pinned" : ""}" data-livly-crop-handle="${handle}"></i>`).join("")}
           ${[
+            ["up-left", "↖", "左上へ微調整"],
             ["up", "▲", "上へ微調整"],
+            ["up-right", "↗", "右上へ微調整"],
             ["right", "▶", "右へ微調整"],
+            ["down-right", "↘", "右下へ微調整"],
             ["down", "▼", "下へ微調整"],
+            ["down-left", "↙", "左下へ微調整"],
             ["left", "◀", "左へ微調整"]
           ].map(([direction, mark, label]) => `
             <button type="button" class="livly-crop-nudge is-${direction}" data-action="nudge-livly-crop" data-crop-nudge="${direction}" aria-label="${label}">${mark}</button>
@@ -8223,19 +8227,19 @@ function nudgeLivlyCrop(direction) {
 
   const step = Math.max(1, Math.round(Math.max(livlyCropState.naturalWidth, livlyCropState.naturalHeight) / 240));
 
-  if (direction === "up") {
+  if (direction.includes("up")) {
     livlyCropState.y -= step;
   }
 
-  if (direction === "down") {
+  if (direction.includes("down")) {
     livlyCropState.y += step;
   }
 
-  if (direction === "left") {
+  if (direction.includes("left")) {
     livlyCropState.x -= step;
   }
 
-  if (direction === "right") {
+  if (direction.includes("right")) {
     livlyCropState.x += step;
   }
 
