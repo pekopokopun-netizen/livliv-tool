@@ -109,7 +109,7 @@ let sharedSaveCompletedAt = 0;
 let sharedDataLoadToken = 0;
 const sharedDataChunkSize = 240000;
 const sharedDataChunkFormat = "chunked-json-v1";
-const livlivUpdateNumber = window.LIVLIV_UPDATE_NUMBER || "2026.07.04-06";
+const livlivUpdateNumber = window.LIVLIV_UPDATE_NUMBER || "2026.07.04-07";
 let expDeletePressTimer = null;
 let expDeletePressTarget = null;
 let suppressNextExpClick = false;
@@ -4576,6 +4576,12 @@ function renderExperienceLivlyPicker() {
           `).join("")}
         </select>
         <div class="experience-livly-preview">${selectedLivly ? renderLivlyImage(selectedLivly, title) : "?"}</div>
+        <div class="info-popover experience-livly-popover" role="dialog" aria-label="${escapeHtml(title)}の情報">
+          <div class="compact-personality-panel">
+            <h2>リブリー</h2>
+            <p>${escapeHtml(title)}</p>
+          </div>
+        </div>
       </div>
     </label>
   `;
@@ -4625,7 +4631,6 @@ function renderExperiencePersonalityChoices() {
           <label>
             <span>${escapeHtml(experienceColumnLabel(column))}</span>
             <input type="radio" name="experience-growth-type" data-exp-input="growthType" value="${escapeHtml(column.id)}" ${expGrowthType === column.id ? "checked" : ""}>
-            <i aria-hidden="true"></i>
           </label>
         `).join("")}
       </fieldset>
@@ -5679,7 +5684,7 @@ function findInfoPanelHost(target) {
     return null;
   }
 
-  const explicitHostSelector = ".livly-display-field, .list-item, .material-name-info-host, .probability-choice-card, .probability-result-card, .experience-column-head, .bulk-file-picker";
+  const explicitHostSelector = ".livly-display-field, .list-item, .material-name-info-host, .probability-choice-card, .probability-result-card, .experience-column-head, .experience-livly-select, .bulk-file-picker";
   const host = target.closest(explicitHostSelector);
 
   if (host && host.querySelector(".info-popover")) {
