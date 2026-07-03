@@ -8458,3 +8458,45 @@ body.single-page-site[data-active-route="materials"] .material-card-header .mate
     width: min(54px, 100%);
   }
 }
+
+body.single-page-site[data-active-route="materials"] .material-card-tag-row,
+body.single-page-site[data-active-route="materials"] .material-card-series-row {
+  min-width: 0;
+  max-width: 100%;
+  overflow: visible;
+}
+
+body.single-page-site[data-active-route="materials"] .material-card-header .material-tag-display,
+body.single-page-site[data-active-route="materials"] .material-card-header .material-tag-display.is-text-medium,
+body.single-page-site[data-active-route="materials"] .material-card-header .material-tag-display.is-text-long,
+body.single-page-site[data-active-route="materials"] .material-card-header .material-tag-display.is-text-dense {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  flex-wrap: nowrap;
+  overflow: hidden;
+  transform: none !important;
+}
+
+body.single-page-site[data-active-route="materials"] .material-card-header .material-tag-display span,
+body.single-page-site[data-active-route="materials"] .material-card-header .material-tag-display span.is-text-medium,
+body.single-page-site[data-active-route="materials"] .material-card-header .material-tag-display span.is-text-long,
+body.single-page-site[data-active-route="materials"] .material-card-header .material-tag-display span.is-text-dense {
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 100%;
+  padding: 1px 3px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: clip;
+  font-size: 7.5px;
+  line-height: 1.05;
+}
+
+body.single-page-site[data-active-route="materials"] .material-card-header .material-tag-display span:only-child {
+  flex: 0 1 auto;
+}
+
+body.single-page-site[data-active-route="materials"] .material-card-header .material-tag-display.is-text-dense span {
+  font-size: 6.5px;
+}
