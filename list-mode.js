@@ -105,7 +105,10 @@ let sharedDataListenerStarted = false;
 let sharedDataUnsubscribe = null;
 let sharedSaveProgressTimer = null;
 let sharedSaveCompletedAt = 0;
-const livlivUpdateNumber = window.LIVLIV_UPDATE_NUMBER || "2026.07.04-03";
+let sharedDataLoadToken = 0;
+const sharedDataChunkSize = 240000;
+const sharedDataChunkFormat = "chunked-json-v1";
+const livlivUpdateNumber = window.LIVLIV_UPDATE_NUMBER || "2026.07.04-04";
 let expDeletePressTimer = null;
 let expDeletePressTarget = null;
 let suppressNextExpClick = false;
@@ -6644,6 +6647,45 @@ function normalizeSharedAppData(data) {
   return window.normalizeAppData ? window.normalizeAppData(data) : data;
 }
 
+function sharedDataChunkDocRef(index, saveId = "") {
+  if (!firebaseServices) {
+    return null;
+  }
+
+  const suffix = String(index).padStart(4, "0");
+  const docId = saveId ? `main_${saveId}_chunk_${suffix}` : `main_chunk_${suffix}`;
+
+  return firebaseServices.doc(firebaseServices.db, "appData", docId);
+}
+
+function splitSharedDataText(text) {
+  const chunks = [];
+
+  for (let index = 0; index < text.length; index += sharedDataChunkSize) {
+    chunks.push(text.slice(index, index + sharedDataChunkSize));
+  }
+
+  return chunks.length ? chunks : [""];
+}
+
+function sharedDataErrorText(error, actionLabel) {
+  const code = String(error?.code || "");
+
+  if (code.includes("permission-denied")) {
+    return `${actionLabel}できませんでした（権限）`;
+  }
+
+  if (code.includes("resource-exhausted") || code.includes("invalid-argument")) {
+    return `${actionLabel}できませんでした（データ量）`;
+  }
+
+  if (code.includes("unavailable")) {
+    return `${actionLabel}できませんでした（通信）`;
+  }
+
+  return `${actionLabel}できませんでした`;
+}
+
 function setSharedDataStatus(message) {
   sharedDataStatus = message;
   updateAuthUi();
@@ -6663,7 +6705,38 @@ function setSharedSaveProgress(percent) {
   });
 }
 
-function applySharedAppDataSnapshot(snapshot) {
+async function sharedAppDataFromSnapshot(snapshot) {
+  const documentData = snapshot.data();
+
+  if (documentData?.format !== sharedDataChunkFormat) {
+    return documentData?.data || documentData;
+  }
+
+  const chunkCount = Math.max(0, Number(documentData.chunkCount) || 0);
+  const saveId = String(documentData.saveId || "");
+  const chunks = [];
+
+  for (let index = 0; index < chunkCount; index += 1) {
+    const chunkRef = sharedDataChunkDocRef(index, saveId);
+
+    if (!chunkRef) {
+      throw new Error("chunk-ref-missing");
+    }
+
+    const chunkSnapshot = await firebaseServices.getDoc(chunkRef);
+
+    if (!chunkSnapshot.exists()) {
+      throw new Error(`shared-data-chunk-missing-${index}`);
+    }
+
+    chunks.push(String(chunkSnapshot.data()?.text || ""));
+    setSharedDataStatus(`共有データを読み込み中 ${Math.round(((index + 1) / chunkCount) * 100)}%`);
+  }
+
+  return JSON.parse(chunks.join(""));
+}
+
+async function applySharedAppDataSnapshot(snapshot) {
   if (!snapshot.exists()) {
     setSharedDataStatus("共有データはまだありません");
     return;
@@ -6678,11 +6751,22 @@ function applySharedAppDataSnapshot(snapshot) {
     return;
   }
 
-  const documentData = snapshot.data();
-  const sharedData = documentData?.data || documentData;
-  appData = saveAppData(normalizeSharedAppData(sharedData));
-  setSharedDataStatus("共有データを読み込みました");
-  renderView();
+  const loadToken = ++sharedDataLoadToken;
+
+  try {
+    const sharedData = await sharedAppDataFromSnapshot(snapshot);
+
+    if (loadToken !== sharedDataLoadToken) {
+      return;
+    }
+
+    appData = saveAppData(normalizeSharedAppData(sharedData));
+    setSharedDataStatus("共有データを読み込みました");
+    renderView();
+  } catch (error) {
+    console.error("共有データ読み込みエラー", error);
+    setSharedDataStatus(sharedDataErrorText(error, "共有データを読み込み"));
+  }
 }
 
 function startSharedAppDataListener() {
@@ -6704,8 +6788,8 @@ function startSharedAppDataListener() {
     return;
   }
 
-  sharedDataUnsubscribe = firebaseServices.onSnapshot(dataRef, snapshot => {
-    applySharedAppDataSnapshot(snapshot);
+  sharedDataUnsubscribe = firebaseServices.onSnapshot(dataRef, async snapshot => {
+    await applySharedAppDataSnapshot(snapshot);
   }, () => {
     sharedDataListenerStarted = false;
     sharedDataUnsubscribe = null;
@@ -6755,12 +6839,38 @@ async function saveSharedAppData() {
   setSharedSaveProgress(0);
 
   try {
-    sharedSaveProgressTimer = setTimeout(() => setSharedSaveProgress(50), 120);
+    const normalizedData = normalizeSharedAppData(appData);
+    const dataText = JSON.stringify(normalizedData);
+    const chunks = splitSharedDataText(dataText);
+    const saveId = `${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+
+    for (let index = 0; index < chunks.length; index += 1) {
+      const chunkRef = sharedDataChunkDocRef(index, saveId);
+
+      if (!chunkRef) {
+        throw new Error("chunk-ref-missing");
+      }
+
+      await firebaseServices.setDoc(chunkRef, {
+        format: sharedDataChunkFormat,
+        index,
+        text: chunks[index],
+        updatedAt: firebaseServices.serverTimestamp(),
+        updatedBy: firebaseUser.email || firebaseUser.uid || ""
+      });
+      setSharedSaveProgress(Math.max(1, Math.min(95, Math.round(((index + 1) / chunks.length) * 95))));
+    }
+
     await firebaseServices.setDoc(dataRef, {
-      data: normalizeSharedAppData(appData),
+      format: sharedDataChunkFormat,
+      saveId,
+      chunkCount: chunks.length,
+      chunkSize: sharedDataChunkSize,
+      byteLength: new Blob([dataText]).size,
       updatedAt: firebaseServices.serverTimestamp(),
       updatedBy: firebaseUser.email || firebaseUser.uid || ""
-    }, { merge: true });
+    }, { merge: false });
+
     clearSharedSaveProgressTimer();
     sharedSaveCompletedAt = Date.now();
     setSharedSaveProgress(100);
@@ -6770,8 +6880,9 @@ async function saveSharedAppData() {
     }, 420);
     return true;
   } catch (error) {
+    console.error("共有データ保存エラー", error);
     clearSharedSaveProgressTimer();
-    setSharedDataStatus("共有データへ保存できませんでした");
+    setSharedDataStatus(sharedDataErrorText(error, "共有データへ保存"));
     return false;
   }
 }
