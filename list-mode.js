@@ -79,6 +79,7 @@ let probabilitySuccessGroups = [[]];
 let probabilityActiveGroupIndex = 0;
 let probabilityUnwantedPersonalityIds = [];
 let probabilityDragState = null;
+let probabilityTouchDragPress = null;
 let probabilityNativeDropInsideUnwanted = false;
 let probabilityNativeDragSource = "";
 let probabilityNativeDragId = "";
@@ -99,7 +100,9 @@ let firebaseAuthSubscribed = false;
 let firebaseUser = null;
 let firebaseAuthError = "";
 let sharedDataStatus = "共有データを準備中";
-const livlivUpdateNumber = window.LIVLIV_UPDATE_NUMBER || "2026.07.03-05";
+let sharedDataListenerStarted = false;
+let sharedDataUnsubscribe = null;
+const livlivUpdateNumber = window.LIVLIV_UPDATE_NUMBER || "2026.07.03-09";
 let expDeletePressTimer = null;
 let expDeletePressTarget = null;
 let suppressNextExpClick = false;
@@ -2758,6 +2761,16 @@ function removeProbabilityDragGhost(dragState = probabilityDragState) {
   dragState?.ghost?.remove();
 }
 
+function releasePointerCaptureSafely(element, pointerId) {
+  try {
+    if (element?.hasPointerCapture?.(pointerId)) {
+      element.releasePointerCapture(pointerId);
+    }
+  } catch (_error) {
+    // Touch long-press dragging does not always use pointer capture.
+  }
+}
+
 function usableProbabilityRect(rect) {
   return Boolean(
     rect &&
@@ -3893,15 +3906,23 @@ function updateProbabilityDragVisualAtPoint(clientX, clientY) {
   probabilityDragState.dropSignature = dropSignature;
 }
 
-function startProbabilityDrag(event) {
-  const unwantedButton = event.target.closest("[data-probability-unwanted-personality]");
-  const button = unwantedButton || event.target.closest("[data-probability-personality]");
+function probabilityDragButtonFromTarget(target) {
+  const unwantedButton = target.closest("[data-probability-unwanted-personality]");
+  const button = unwantedButton || target.closest("[data-probability-personality]");
 
-  if (!button || activeRoute !== "personalityProbability") {
-    return;
-  }
+  return {
+    button,
+    source: unwantedButton ? "unwanted" : "choice"
+  };
+}
 
-  rememberProbabilityDragPoint(event);
+function createProbabilityDragState(button, source, point, pointerId, options = {}) {
+  rememberProbabilityDragPoint({
+    clientX: point.clientX,
+    clientY: point.clientY,
+    pointerType: options.pointerType || "mouse"
+  });
+
   probabilityDragState = {
     button,
     ghost: null,
@@ -3909,21 +3930,56 @@ function startProbabilityDrag(event) {
     isDragging: false,
     offsetX: 0,
     offsetY: 0,
-    pointerId: event.pointerId,
-    source: unwantedButton ? "unwanted" : "choice",
+    pointerId,
+    source,
     autoScrollFrame: null,
     autoScrollSpeed: 0,
     dropSignature: "",
-    lastClientX: event.clientX,
-    lastClientY: event.clientY,
+    lastClientX: point.clientX,
+    lastClientY: point.clientY,
     reorderSnapshot: null,
-    startX: event.clientX,
-    startY: event.clientY
+    startX: point.clientX,
+    startY: point.clientY
   };
   document.body.classList.add("is-probability-pressing");
   setInfoPanelDragSuppressed(true);
-  button.setPointerCapture?.(event.pointerId);
+
+  if (options.capturePointer) {
+    button.setPointerCapture?.(pointerId);
+  }
+
   closeTouchInfo();
+}
+
+function startProbabilityDrag(event) {
+  if (event.pointerType === "touch") {
+    return;
+  }
+
+  if (probabilityTouchDragPress) {
+    return;
+  }
+
+  const unwantedButton = event.target.closest("[data-probability-unwanted-personality]");
+  const button = unwantedButton || event.target.closest("[data-probability-personality]");
+
+  if (!button || activeRoute !== "personalityProbability") {
+    return;
+  }
+
+  createProbabilityDragState(
+    button,
+    unwantedButton ? "unwanted" : "choice",
+    {
+      clientX: event.clientX,
+      clientY: event.clientY
+    },
+    event.pointerId,
+    {
+      capturePointer: true,
+      pointerType: event.pointerType || "mouse"
+    }
+  );
 }
 
 function moveProbabilityDrag(event) {
@@ -4006,7 +4062,7 @@ function finishProbabilityDrag(event) {
   const finishingDragState = probabilityDragState;
 
   stopProbabilityAutoScroll(finishingDragState);
-  button.releasePointerCapture?.(event.pointerId);
+  releasePointerCaptureSafely(button, event.pointerId);
 
   if (isDragging && isUnwantedReorderMove) {
     const finishReorderAnimation = prepareProbabilityTransferAnimation(
@@ -4078,6 +4134,148 @@ function finishProbabilityDrag(event) {
   if (shouldReturnToSource) {
     scheduleInfoPanelForHostAfterRelease(event, sourceHost);
   }
+}
+
+function findTouchByIdentifier(touchList, identifier) {
+  return Array.from(touchList || []).find(touch => touch.identifier === identifier) || null;
+}
+
+function clearProbabilityTouchDragPress() {
+  if (!probabilityTouchDragPress) {
+    return;
+  }
+
+  clearTimeout(probabilityTouchDragPress.timer);
+  probabilityTouchDragPress = null;
+}
+
+function cancelProbabilityTouchDragPress() {
+  clearProbabilityTouchDragPress();
+
+  if (!probabilityDragState) {
+    document.body.classList.remove("is-probability-pressing");
+    setInfoPanelDragSuppressed(false);
+    clearProbabilityDragVisualState();
+  }
+}
+
+function activateProbabilityTouchDragPress() {
+  if (!probabilityTouchDragPress || probabilityDragState) {
+    return;
+  }
+
+  const press = probabilityTouchDragPress;
+
+  press.activated = true;
+  suppressNextProbabilityClick = true;
+  createProbabilityDragState(
+    press.button,
+    press.source,
+    {
+      clientX: press.lastClientX,
+      clientY: press.lastClientY
+    },
+    press.pointerId,
+    {
+      capturePointer: false,
+      pointerType: "touch"
+    }
+  );
+}
+
+function startProbabilityTouchDragPress(event) {
+  if (activeRoute !== "personalityProbability" || event.touches?.length !== 1) {
+    return false;
+  }
+
+  const { button, source } = probabilityDragButtonFromTarget(event.target);
+
+  if (!button || probabilityDragState || probabilityTouchDragPress) {
+    return false;
+  }
+
+  const touch = event.touches[0];
+
+  closeTouchInfo();
+  suppressCursorInfoAfterTouch(1200);
+  probabilityTouchDragPress = {
+    activated: false,
+    button,
+    identifier: touch.identifier,
+    lastClientX: touch.clientX,
+    lastClientY: touch.clientY,
+    pointerId: 9001,
+    source,
+    startClientX: touch.clientX,
+    startClientY: touch.clientY,
+    timer: setTimeout(activateProbabilityTouchDragPress, 560)
+  };
+
+  return true;
+}
+
+function moveProbabilityTouchDrag(event) {
+  if (!probabilityTouchDragPress) {
+    return;
+  }
+
+  const touch = findTouchByIdentifier(event.touches, probabilityTouchDragPress.identifier);
+
+  if (!touch) {
+    return;
+  }
+
+  probabilityTouchDragPress.lastClientX = touch.clientX;
+  probabilityTouchDragPress.lastClientY = touch.clientY;
+  suppressCursorInfoAfterTouch(1200);
+
+  if (!probabilityTouchDragPress.activated) {
+    const distance = Math.hypot(
+      touch.clientX - probabilityTouchDragPress.startClientX,
+      touch.clientY - probabilityTouchDragPress.startClientY
+    );
+
+    if (distance > 12) {
+      cancelProbabilityTouchDragPress();
+    }
+
+    return;
+  }
+
+  event.preventDefault();
+  moveProbabilityDrag({
+    clientX: touch.clientX,
+    clientY: touch.clientY,
+    pointerId: probabilityTouchDragPress.pointerId,
+    pointerType: "touch",
+    preventDefault: () => event.preventDefault()
+  });
+}
+
+function finishProbabilityTouchDrag(event) {
+  if (!probabilityTouchDragPress) {
+    return;
+  }
+
+  const press = probabilityTouchDragPress;
+  const touch = findTouchByIdentifier(event.changedTouches, press.identifier);
+
+  clearTimeout(press.timer);
+
+  if (!press.activated) {
+    cancelProbabilityTouchDragPress();
+    return;
+  }
+
+  event.preventDefault();
+  finishProbabilityDrag({
+    clientX: touch?.clientX ?? press.lastClientX,
+    clientY: touch?.clientY ?? press.lastClientY,
+    pointerId: press.pointerId,
+    pointerType: "touch",
+    preventDefault: () => event.preventDefault()
+  });
+  clearProbabilityTouchDragPress();
 }
 
 function updateProbabilityResult() {
@@ -4405,7 +4603,9 @@ function renderExperiencePersonalityChoices() {
 
 function renderExperienceTable() {
   const columns = appData.experienceColumns;
-  const gridStyle = `grid-template-columns: 110px repeat(${columns.length}, minmax(120px, 1fr))${editMode ? " 48px" : ""};`;
+  const levelColumn = editMode ? "minmax(52px, 0.72fr)" : "minmax(58px, 0.7fr)";
+  const editColumn = editMode ? " minmax(28px, 34px)" : "";
+  const gridStyle = `grid-template-columns: ${levelColumn} repeat(${columns.length}, minmax(0, 1fr))${editColumn};`;
   const maxLevel = maxExperienceLevel();
 
   return `
@@ -5473,8 +5673,31 @@ function resetAllInfoPanelPositions() {
 }
 
 function findInfoPanelHost(target) {
-  const host = target.closest(".livly-display-field, .list-item, .material-name-info-host, .probability-choice-card, .probability-result-card, .experience-column-head, .bulk-file-picker");
-  return host && host.querySelector(".info-popover") ? host : null;
+  if (!target?.closest) {
+    return null;
+  }
+
+  const explicitHostSelector = ".livly-display-field, .list-item, .material-name-info-host, .probability-choice-card, .probability-result-card, .experience-column-head, .bulk-file-picker";
+  const host = target.closest(explicitHostSelector);
+
+  if (host && host.querySelector(".info-popover")) {
+    return host;
+  }
+
+  let candidate = target;
+
+  while (candidate && candidate !== contentArea && candidate !== document.body) {
+    if (
+      candidate.children &&
+      Array.from(candidate.children).some(child => child.classList?.contains("info-popover"))
+    ) {
+      return candidate;
+    }
+
+    candidate = candidate.parentElement;
+  }
+
+  return null;
 }
 
 function clearActiveInfoHost() {
@@ -5502,8 +5725,8 @@ function setActiveInfoHost(host) {
 }
 
 function closeOtherInfoPanels(host) {
-  document.querySelectorAll(".list-item.is-open, .livly-display-field.is-open, .material-name-info-host.is-open, .probability-choice-card.is-open, .probability-result-card.is-open, .experience-column-head.is-open, .bulk-file-picker.is-open").forEach(item => {
-    if (item !== host) {
+  document.querySelectorAll(".is-open").forEach(item => {
+    if (item !== host && item.querySelector(".info-popover")) {
       item.classList.remove("is-open");
     }
   });
@@ -5568,7 +5791,7 @@ function showCursorInfoPanel(event) {
     stopProbabilityAutoScroll(probabilityDragState);
     removeProbabilityDragGhost(probabilityDragState);
     probabilityDragState?.button?.classList.remove("is-dragging");
-    probabilityDragState?.button?.releasePointerCapture?.(probabilityDragState.pointerId);
+    releasePointerCaptureSafely(probabilityDragState?.button, probabilityDragState?.pointerId);
     probabilityDragState = null;
     probabilityNativeDragId = "";
     probabilityNativeDragSource = "";
@@ -6453,6 +6676,52 @@ function setSharedDataStatus(message) {
   updateAuthUi();
 }
 
+function applySharedAppDataSnapshot(snapshot) {
+  if (!snapshot.exists()) {
+    setSharedDataStatus("共有データはまだありません");
+    return;
+  }
+
+  if (editMode) {
+    setSharedDataStatus("共有データ更新あり（編集中）");
+    return;
+  }
+
+  const documentData = snapshot.data();
+  const sharedData = documentData?.data || documentData;
+  appData = saveAppData(normalizeSharedAppData(sharedData));
+  setSharedDataStatus("共有データを読み込みました");
+  renderView();
+}
+
+function startSharedAppDataListener() {
+  if (!firebaseServices || sharedDataListenerStarted) {
+    return;
+  }
+
+  const dataRef = sharedDataDocRef();
+
+  if (!dataRef) {
+    return;
+  }
+
+  sharedDataListenerStarted = true;
+  setSharedDataStatus("共有データを確認中");
+
+  if (typeof firebaseServices.onSnapshot !== "function") {
+    loadSharedAppData();
+    return;
+  }
+
+  sharedDataUnsubscribe = firebaseServices.onSnapshot(dataRef, snapshot => {
+    applySharedAppDataSnapshot(snapshot);
+  }, () => {
+    sharedDataListenerStarted = false;
+    sharedDataUnsubscribe = null;
+    setSharedDataStatus("共有データを読み込めませんでした");
+  });
+}
+
 async function loadSharedAppData() {
   if (!firebaseServices) {
     return;
@@ -6474,11 +6743,7 @@ async function loadSharedAppData() {
       return;
     }
 
-    const documentData = snapshot.data();
-    const sharedData = documentData?.data || documentData;
-    appData = saveAppData(normalizeSharedAppData(sharedData));
-    setSharedDataStatus("共有データを読み込みました");
-    renderView();
+    applySharedAppDataSnapshot(snapshot);
   } catch (error) {
     setSharedDataStatus("共有データを読み込めませんでした");
   }
@@ -6535,19 +6800,20 @@ function setupFirebaseAuth(services) {
   firebaseAuthReady = false;
   firebaseAuthSubscribed = true;
   updateAuthUi();
+  startSharedAppDataListener();
 
   services.onAuthStateChanged(services.auth, user => {
     firebaseAuthReady = true;
     firebaseUser = user;
     firebaseAuthError = "";
     updateAuthUi();
-    loadSharedAppData();
+    startSharedAppDataListener();
   }, () => {
     firebaseAuthReady = true;
     firebaseUser = null;
     firebaseAuthError = "ログイン状態を確認できませんでした";
-    sharedDataStatus = "共有データ 未接続";
     updateAuthUi();
+    startSharedAppDataListener();
   });
 }
 
@@ -10566,6 +10832,9 @@ contentArea.addEventListener("pointercancel", clearExperienceDeletePressTimer);
 document.addEventListener("pointerup", finishProbabilityDrag);
 document.addEventListener("pointercancel", finishProbabilityDrag);
 document.addEventListener("pointermove", moveProbabilityDrag);
+document.addEventListener("touchmove", moveProbabilityTouchDrag, { passive: false, capture: true });
+document.addEventListener("touchend", finishProbabilityTouchDrag, { passive: false, capture: true });
+document.addEventListener("touchcancel", finishProbabilityTouchDrag, { passive: false, capture: true });
 document.addEventListener("pointerup", scheduleInfoPanelAtProbabilityReleasePoint);
 document.addEventListener("mouseup", scheduleInfoPanelAtProbabilityReleasePoint);
 document.addEventListener("pointermove", cancelScheduledProbabilityInfoPanelOnMove, true);
@@ -10607,7 +10876,7 @@ contentArea.addEventListener("dragstart", event => {
     stopProbabilityAutoScroll(probabilityDragState);
     removeProbabilityDragGhost(probabilityDragState);
     probabilityDragState.button?.classList.remove("is-dragging");
-    probabilityDragState.button?.releasePointerCapture?.(probabilityDragState.pointerId);
+    releasePointerCaptureSafely(probabilityDragState.button, probabilityDragState.pointerId);
     probabilityDragState = null;
   }
   probabilityNativeDragSource = unwantedButton ? "unwanted" : "choice";
@@ -10813,6 +11082,13 @@ contentArea.addEventListener("pointerleave", event => {
 
 contentArea.addEventListener("touchstart", event => {
   suppressCursorInfoAfterTouch();
+
+  if (startProbabilityTouchDragPress(event)) {
+    clearTimeout(longPressTimer);
+    longPressTouchPoint = null;
+    return;
+  }
+
   const canShowBulkUploadInfo = editMode && Boolean(event.target.closest(".bulk-file-picker"));
 
   if (editMode && !canShowBulkUploadInfo) {
@@ -10847,7 +11123,7 @@ contentArea.addEventListener("touchstart", event => {
     stopProbabilityAutoScroll(probabilityDragState);
     removeProbabilityDragGhost(probabilityDragState);
     probabilityDragState?.button?.classList.remove("is-dragging");
-    probabilityDragState?.button?.releasePointerCapture?.(probabilityDragState.pointerId);
+    releasePointerCaptureSafely(probabilityDragState?.button, probabilityDragState?.pointerId);
     probabilityDragState = null;
     probabilityNativeDragId = "";
     probabilityNativeDragSource = "";
@@ -10881,6 +11157,20 @@ contentArea.addEventListener("touchcancel", () => {
   closeTouchInfo();
   longPressTouchPoint = null;
 });
+
+document.addEventListener("touchend", () => {
+  suppressCursorInfoAfterTouch();
+  clearTimeout(longPressTimer);
+  closeTouchInfo();
+  longPressTouchPoint = null;
+}, true);
+
+document.addEventListener("touchcancel", () => {
+  suppressCursorInfoAfterTouch();
+  clearTimeout(longPressTimer);
+  closeTouchInfo();
+  longPressTouchPoint = null;
+}, true);
 
 contentArea.addEventListener("touchmove", event => {
   suppressCursorInfoAfterTouch();

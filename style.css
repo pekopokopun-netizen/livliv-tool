@@ -4557,6 +4557,11 @@ body.single-page-site {
 
 .single-page-site .experience-personality-choices input {
   position: absolute;
+  width: 1px;
+  height: 1px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
   opacity: 0;
   pointer-events: none;
 }
@@ -7918,6 +7923,23 @@ body.single-page-site[data-active-route="materials"] .material-card-header .mate
 }
 
 @media (hover: none), (pointer: coarse), (max-width: 640px) {
+  .single-page-site .probability-choice[data-probability-personality],
+  .single-page-site .probability-choice[data-probability-unwanted-personality],
+  .single-page-site .probability-unwanted-card .probability-choice {
+    touch-action: pan-y;
+  }
+
+  .single-page-site:not(.is-edit-mode) .info-popover {
+    display: none !important;
+  }
+
+  .single-page-site:not(.is-edit-mode) .is-open > .info-popover,
+  .single-page-site:not(.is-edit-mode) .is-info-active > .info-popover,
+  .single-page-site:not(.is-edit-mode) .is-open .info-popover,
+  .single-page-site:not(.is-edit-mode) .is-info-active .info-popover {
+    display: block !important;
+  }
+
   .single-page-site:not(.is-edit-mode) .list-item:not(.is-open):not(.is-info-active) .info-popover,
   .single-page-site:not(.is-edit-mode) .livly-display-field:not(.is-open):not(.is-info-active) > .info-popover,
   .single-page-site:not(.is-edit-mode) .material-name-info-host:not(.is-open):not(.is-info-active) .info-popover,
@@ -7943,5 +7965,87 @@ body.single-page-site[data-active-route="materials"] .material-card-header .mate
   .single-page-site:not(.is-edit-mode) .bulk-file-picker.is-open .info-popover,
   .single-page-site:not(.is-edit-mode) .bulk-file-picker.is-info-active .info-popover {
     display: block !important;
+  }
+}
+
+.single-page-site .experience-table-wrap {
+  max-width: 100%;
+  overflow-x: hidden;
+  box-sizing: border-box;
+}
+
+.single-page-site .experience-table,
+.single-page-site .experience-row {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.single-page-site .experience-row > * {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: clip;
+}
+
+.single-page-site .experience-column-head {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.single-page-site .experience-column-head select,
+.single-page-site .experience-row input {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+@media (max-width: 640px) {
+  .single-page-site .experience-table-wrap {
+    padding: 8px;
+  }
+
+  .single-page-site .experience-row {
+    gap: 1px;
+  }
+
+  .single-page-site .experience-row > * {
+    padding: 7px 4px;
+    font-size: clamp(10px, 2.75vw, 12px);
+    line-height: 1.2;
+  }
+
+  .single-page-site .experience-row strong {
+    word-break: keep-all;
+  }
+
+  .single-page-site .experience-column-head {
+    padding: 5px 3px;
+    gap: 3px;
+  }
+
+  .single-page-site .experience-column-head select {
+    height: 30px;
+    padding: 3px 4px;
+    font-size: 11px !important;
+  }
+
+  .single-page-site .experience-column-drag {
+    width: 24px;
+    height: 24px;
+    min-width: 24px;
+    font-size: 13px;
+  }
+
+  .single-page-site .experience-add-column-button,
+  .single-page-site .experience-add-level-row button {
+    width: 28px;
+    height: 28px;
+  }
+
+  .single-page-site .experience-row input {
+    padding: 4px 3px;
+    font-size: 16px !important;
   }
 }
