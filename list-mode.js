@@ -108,7 +108,7 @@ let sharedSaveCompletedAt = 0;
 let sharedDataLoadToken = 0;
 const sharedDataChunkSize = 240000;
 const sharedDataChunkFormat = "chunked-json-v1";
-const livlivUpdateNumber = window.LIVLIV_UPDATE_NUMBER || "2026.07.04-04";
+const livlivUpdateNumber = window.LIVLIV_UPDATE_NUMBER || "2026.07.04-05";
 let expDeletePressTimer = null;
 let expDeletePressTarget = null;
 let suppressNextExpClick = false;
@@ -7983,13 +7983,13 @@ function renderLivlyCropTool(item, itemType = "livly") {
         <span class="livly-crop-box" data-livly-crop-box style="${cropStyle}">
           ${["nw", "ne", "sw", "se"].map(handle => `<i class="${livlyCropPinnedLoupeHandle === handle ? "is-pinned" : ""}" data-livly-crop-handle="${handle}"></i>`).join("")}
           ${[
-            ["up-left", "↖", "左上へ微調整"],
+            ["up-left", "＋", "左上へ拡大微調整"],
             ["up", "▲", "上へ微調整"],
-            ["up-right", "↗", "右上へ微調整"],
+            ["up-right", "＋", "右上へ拡大微調整"],
             ["right", "▶", "右へ微調整"],
-            ["down-right", "↘", "右下へ微調整"],
+            ["down-right", "＋", "右下へ拡大微調整"],
             ["down", "▼", "下へ微調整"],
-            ["down-left", "↙", "左下へ微調整"],
+            ["down-left", "＋", "左下へ拡大微調整"],
             ["left", "◀", "左へ微調整"]
           ].map(([direction, mark, label]) => `
             <button type="button" class="livly-crop-nudge is-${direction}" data-action="nudge-livly-crop" data-crop-nudge="${direction}" aria-label="${label}">${mark}</button>
@@ -8336,21 +8336,27 @@ function nudgeLivlyCrop(direction) {
     return;
   }
 
-  const step = Math.max(1, Math.round(Math.max(livlyCropState.naturalWidth, livlyCropState.naturalHeight) / 240));
+  const step = 1;
 
-  if (direction.includes("up")) {
-    livlyCropState.y -= step;
-  }
-
-  if (direction.includes("down")) {
-    livlyCropState.y += step;
-  }
-
-  if (direction.includes("left")) {
+  if (direction === "up-left") {
     livlyCropState.x -= step;
-  }
-
-  if (direction.includes("right")) {
+    livlyCropState.y -= step;
+    livlyCropState.size += step;
+  } else if (direction === "up-right") {
+    livlyCropState.y -= step;
+    livlyCropState.size += step;
+  } else if (direction === "down-right") {
+    livlyCropState.size += step;
+  } else if (direction === "down-left") {
+    livlyCropState.x -= step;
+    livlyCropState.size += step;
+  } else if (direction === "up") {
+    livlyCropState.y -= step;
+  } else if (direction === "down") {
+    livlyCropState.y += step;
+  } else if (direction === "left") {
+    livlyCropState.x -= step;
+  } else if (direction === "right") {
     livlyCropState.x += step;
   }
 

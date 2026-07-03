@@ -8129,6 +8129,15 @@ body.single-page-site[data-active-route="materials"] .material-card-header .mate
   left: -31px;
 }
 
+.single-page-site .livly-crop-nudge.is-up-left,
+.single-page-site .livly-crop-nudge.is-up-right,
+.single-page-site .livly-crop-nudge.is-down-right,
+.single-page-site .livly-crop-nudge.is-down-left {
+  border-radius: 50%;
+  font-size: 14px;
+  font-weight: 900;
+}
+
 .single-page-site .livly-crop-nudge:hover,
 .single-page-site .livly-crop-nudge:focus-visible,
 .single-page-site .livly-crop-nudge:active {
@@ -8165,6 +8174,33 @@ body.single-page-site[data-active-route="materials"] .material-card-header .mate
   border-radius: 5px;
   font-size: 10.5px;
   line-height: 1.15;
+}
+
+body.single-page-site[data-active-route="materials"] .material-filter-multi {
+  gap: 2px;
+}
+
+body.single-page-site[data-active-route="materials"] .material-filter-multi .material-filter-chip,
+body.single-page-site[data-active-route="materials"] .material-filter-chip {
+  min-height: 19px;
+  padding: 1px 5px;
+  border-radius: 5px;
+  font-size: 9.5px;
+  line-height: 1.05;
+}
+
+body.single-page-site[data-active-route="materials"] .material-card-header .material-tag-display {
+  gap: 2px;
+}
+
+body.single-page-site[data-active-route="materials"] .material-card-header .material-tag-display span,
+body.single-page-site[data-active-route="materials"] .material-card-header .material-tag-display span.is-text-medium,
+body.single-page-site[data-active-route="materials"] .material-card-header .material-tag-display span.is-text-long,
+body.single-page-site[data-active-route="materials"] .material-card-header .material-tag-display span.is-text-dense {
+  padding: 1px 4px;
+  border-radius: 4px;
+  font-size: 8.5px;
+  line-height: 1.05;
 }
 
 @media (max-width: 640px) {
