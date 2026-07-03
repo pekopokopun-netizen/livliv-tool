@@ -98,6 +98,7 @@ let firebaseAuthReady = false;
 let firebaseAuthSubscribed = false;
 let firebaseUser = null;
 let firebaseAuthError = "";
+let sharedDataStatus = "共有データ 未接続";
 let expDeletePressTimer = null;
 let expDeletePressTarget = null;
 let suppressNextExpClick = false;
@@ -212,6 +213,7 @@ const editToolbar = document.getElementById("editToolbar");
 const editModeButton = document.getElementById("editModeButton");
 const menuAuthPanel = document.getElementById("menuAuthPanel");
 const authStatusText = document.getElementById("authStatusText");
+const cloudStatusText = document.getElementById("cloudStatusText");
 const authLoginForm = document.getElementById("authLoginForm");
 const authEmailInput = document.getElementById("authEmailInput");
 const authPasswordInput = document.getElementById("authPasswordInput");
@@ -4130,6 +4132,7 @@ function saveProbabilitySettings() {
   });
 
   appData = saveAppData(appData);
+  syncSharedAppDataAfterSave();
   commitProbabilitySettingsEditSession();
   renderView();
 
@@ -4674,6 +4677,7 @@ function clearExperienceDeletePressTimer() {
 
 function saveExperienceEdits() {
   appData = saveAppData(appData);
+  syncSharedAppDataAfterSave();
   commitExperienceEditSession();
   renderView();
 
@@ -5191,6 +5195,7 @@ function copyDdTable(button) {
 
 function saveDdEdits() {
   appData = saveAppData(appData);
+  syncSharedAppDataAfterSave();
   commitDdEditSession();
   renderView();
 
@@ -6397,10 +6402,99 @@ function updateAuthUi() {
   authLoginForm.hidden = isLoggedIn;
   authLogoutButton.hidden = !isLoggedIn;
   editModeButton.hidden = !isLoggedIn;
+  cloudStatusText.textContent = isLoggedIn ? sharedDataStatus : "共有データはログイン後に同期";
 
   if (!isLoggedIn && editMode) {
     toggleEditMode();
   }
+}
+
+function sharedDataDocRef() {
+  if (!firebaseServices) {
+    return null;
+  }
+
+  return firebaseServices.doc(firebaseServices.db, "appData", "main");
+}
+
+function normalizeSharedAppData(data) {
+  return window.normalizeAppData ? window.normalizeAppData(data) : data;
+}
+
+function setSharedDataStatus(message) {
+  sharedDataStatus = message;
+  updateAuthUi();
+}
+
+async function loadSharedAppData() {
+  if (!firebaseServices || !firebaseUser) {
+    return;
+  }
+
+  const dataRef = sharedDataDocRef();
+
+  if (!dataRef) {
+    return;
+  }
+
+  setSharedDataStatus("共有データを確認中");
+
+  try {
+    const snapshot = await firebaseServices.getDoc(dataRef);
+
+    if (!firebaseUser) {
+      return;
+    }
+
+    if (!snapshot.exists()) {
+      setSharedDataStatus("共有データはまだありません");
+      return;
+    }
+
+    const documentData = snapshot.data();
+    const sharedData = documentData?.data || documentData;
+    appData = saveAppData(normalizeSharedAppData(sharedData));
+    setSharedDataStatus("共有データを読み込みました");
+    renderView();
+  } catch (error) {
+    setSharedDataStatus("共有データを読み込めませんでした");
+  }
+}
+
+async function saveSharedAppData() {
+  if (!firebaseServices || !firebaseUser) {
+    return false;
+  }
+
+  const dataRef = sharedDataDocRef();
+
+  if (!dataRef) {
+    return false;
+  }
+
+  setSharedDataStatus("共有データへ保存中");
+
+  try {
+    await firebaseServices.setDoc(dataRef, {
+      data: normalizeSharedAppData(appData),
+      updatedAt: firebaseServices.serverTimestamp(),
+      updatedBy: firebaseUser.email || firebaseUser.uid || ""
+    }, { merge: true });
+    setSharedDataStatus("共有データに保存しました");
+    return true;
+  } catch (error) {
+    setSharedDataStatus("共有データへ保存できませんでした");
+    return false;
+  }
+}
+
+function syncSharedAppDataAfterSave() {
+  if (!firebaseUser) {
+    setSharedDataStatus("ログイン中だけ共有保存します");
+    return;
+  }
+
+  saveSharedAppData();
 }
 
 function setupFirebaseAuth(services) {
@@ -6423,11 +6517,17 @@ function setupFirebaseAuth(services) {
     firebaseAuthReady = true;
     firebaseUser = user;
     firebaseAuthError = "";
+    sharedDataStatus = user ? "共有データを確認中" : "共有データ 未接続";
     updateAuthUi();
+
+    if (user) {
+      loadSharedAppData();
+    }
   }, () => {
     firebaseAuthReady = true;
     firebaseUser = null;
     firebaseAuthError = "ログイン状態を確認できませんでした";
+    sharedDataStatus = "共有データ 未接続";
     updateAuthUi();
   });
 }
@@ -8373,6 +8473,7 @@ function clearLivlyDeletePressTimer() {
 
 function saveLivlyEdits() {
   appData = saveAppData(appData);
+  syncSharedAppDataAfterSave();
   commitLivlyEditSession();
   renderView();
 
@@ -8670,6 +8771,7 @@ function deleteMaterial(itemId) {
 
 function saveMaterialEdits() {
   appData = saveAppData(appData);
+  syncSharedAppDataAfterSave();
   commitMaterialEditSession();
   renderView();
 
@@ -8795,6 +8897,7 @@ function normalizePersonalityPercentages() {
 function savePersonalityEdits() {
   normalizePersonalityPercentages();
   appData = saveAppData(appData);
+  syncSharedAppDataAfterSave();
   commitPersonalityEditSession();
   renderView();
 
@@ -9268,6 +9371,7 @@ function saveEditor() {
   }
 
   appData = saveAppData(appData);
+  syncSharedAppDataAfterSave();
   editingNewItemId = null;
   editingBackupItem = null;
   renderView();
@@ -9281,6 +9385,7 @@ function deleteCurrentItem() {
 
   appData[activeRoute] = appData[activeRoute].filter(item => item.id !== editingItemId);
   appData = saveAppData(appData);
+  syncSharedAppDataAfterSave();
   editingNewItemId = null;
   editingBackupItem = null;
   renderView();

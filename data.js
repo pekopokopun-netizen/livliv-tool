@@ -432,5 +432,6 @@ function saveAppData(data) {
 }
 
 window.defaultData = defaultData;
+window.normalizeAppData = normalizeAppData;
 window.loadAppData = loadAppData;
 window.saveAppData = saveAppData;

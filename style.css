@@ -1233,13 +1233,18 @@ body.single-page-site {
   border-top: 1px solid #4a4f5b;
 }
 
-.single-page-site .menu-auth-status {
+.single-page-site .menu-auth-status,
+.single-page-site .menu-cloud-status {
   margin: 0 0 8px;
   color: #d8dbe3;
   font-size: 11px;
   font-weight: 800;
   line-height: 1.35;
   word-break: break-all;
+}
+
+.single-page-site .menu-cloud-status {
+  color: #f0c274;
 }
 
 .single-page-site .menu-auth-form {

@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>リブリー一覧</title>
-    <link rel="stylesheet" href="style.css?v=20260703-no-export">
+    <link rel="stylesheet" href="style.css?v=20260703-cloud-sync">
 </head>
 <body class="list-page single-page-site">
   <div class="loading-screen" aria-label="読み込み中">
@@ -51,6 +51,7 @@
     <button type="button" data-route="exp">経験値計算</button>
     <section class="menu-auth-panel" id="menuAuthPanel" aria-label="ログイン">
       <p class="menu-auth-status" id="authStatusText">ログイン確認中</p>
+      <p class="menu-cloud-status" id="cloudStatusText">共有データ 未接続</p>
       <div class="menu-auth-form" id="authLoginForm">
         <input type="email" id="authEmailInput" autocomplete="email" placeholder="メール">
         <input type="password" id="authPasswordInput" autocomplete="current-password" placeholder="パスワード">
@@ -65,7 +66,7 @@
   </nav>
 
   <script type="module" src="firebase-setup.js?v=20260703-firebase-setup"></script>
-  <script src="data.js"></script>
-    <script src="list-mode.js?v=20260703-no-export"></script>
+  <script src="data.js?v=20260703-cloud-sync"></script>
+    <script src="list-mode.js?v=20260703-cloud-sync"></script>
 </body>
 </html>
