@@ -3,6 +3,7 @@ let editMode = false;
 let activeTouchItem = null;
 let longPressTimer = null;
 let longPressTouchPoint = null;
+let touchInfoDragState = null;
 let editingItemId = null;
 let editingNewItemId = null;
 let editingBackupItem = null;
@@ -109,7 +110,7 @@ let sharedSaveCompletedAt = 0;
 let sharedDataLoadToken = 0;
 const sharedDataChunkSize = 240000;
 const sharedDataChunkFormat = "chunked-json-v1";
-const livlivUpdateNumber = window.LIVLIV_UPDATE_NUMBER || "2026.07.04-12";
+const livlivUpdateNumber = window.LIVLIV_UPDATE_NUMBER || "2026.07.04-13";
 let expDeletePressTimer = null;
 let expDeletePressTarget = null;
 let suppressNextExpClick = false;
@@ -5755,6 +5756,63 @@ function closeOtherInfoPanels(host) {
   setActiveInfoHost(host);
 }
 
+function canStartTouchInfoDrag(host) {
+  if (editMode || !host || !["livlies", "personalities"].includes(activeRoute)) {
+    return false;
+  }
+
+  if (activeRoute === "livlies") {
+    return host.classList.contains("livly-display-field") && Boolean(host.querySelector(".info-popover"));
+  }
+
+  return host.classList.contains("personality-row") && Boolean(host.querySelector(".info-popover"));
+}
+
+function startTouchInfoDrag(host) {
+  if (!canStartTouchInfoDrag(host)) {
+    touchInfoDragState = null;
+    document.body.classList.remove("is-touch-info-dragging");
+    return;
+  }
+
+  touchInfoDragState = { host };
+  document.body.classList.add("is-touch-info-dragging");
+}
+
+function finishTouchInfoDrag() {
+  touchInfoDragState = null;
+  document.body.classList.remove("is-touch-info-dragging");
+}
+
+function showTouchInfoDragPanel(touch) {
+  if (!touchInfoDragState || !touch) {
+    return;
+  }
+
+  const point = {
+    clientX: touch.clientX,
+    clientY: touch.clientY,
+    pointerType: "touch",
+    target: document.elementFromPoint(touch.clientX, touch.clientY)
+  };
+  const nextHost = findInfoPanelHostAtPoint(point, null);
+
+  if (!canStartTouchInfoDrag(nextHost)) {
+    return;
+  }
+
+  const panel = nextHost.querySelector(".info-popover");
+
+  if (!panel) {
+    return;
+  }
+
+  nextHost.classList.add("is-open");
+  activeTouchItem = nextHost;
+  touchInfoDragState.host = nextHost;
+  positionInfoPanel(point, panel);
+}
+
 function restoreCursorInfoPanelAfterRender(event) {
   if (!event || editMode || !canUseCursorPanel(event) || !Number.isFinite(event.clientX) || !Number.isFinite(event.clientY)) {
     return;
@@ -9938,6 +9996,8 @@ function readLivlyNestedFields(item) {
 }
 
 function closeTouchInfo() {
+  finishTouchInfoDrag();
+
   if (activeTouchItem) {
     activeTouchItem.classList.remove("is-open");
     activeTouchItem = null;
@@ -11417,6 +11477,7 @@ contentArea.addEventListener("touchstart", event => {
     closeTouchInfo();
     item.classList.add("is-open");
     activeTouchItem = item;
+    startTouchInfoDrag(item);
     positionInfoPanel(touchPoint || {
       clientX: window.innerWidth / 2,
       clientY: window.innerHeight / 2,
@@ -11458,6 +11519,20 @@ document.addEventListener("touchcancel", () => {
 contentArea.addEventListener("touchmove", event => {
   suppressCursorInfoAfterTouch();
 
+  if (touchInfoDragState) {
+    const touch = event.touches && event.touches[0];
+
+    if (!touch) {
+      closeTouchInfo();
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+    showTouchInfoDragPanel(touch);
+    return;
+  }
+
   if (!longPressTouchPoint) {
     clearTimeout(longPressTimer);
     return;
@@ -11480,7 +11555,7 @@ contentArea.addEventListener("touchmove", event => {
     clearTimeout(longPressTimer);
     longPressTouchPoint = null;
   }
-});
+}, { passive: false });
 
 document.addEventListener("click", event => {
   if (
