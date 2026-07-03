@@ -227,10 +227,10 @@ function normalizeMaterialTagList(tags, legacyTag) {
     ? tags
     : legacyTag
       ? [legacyTag]
-      : ["その他"];
+      : [];
   const cleanTags = [...new Set(source.map(textValue).filter(tag => defaultMaterialTagNames.includes(tag)))];
 
-  return cleanTags.length ? cleanTags : ["その他"];
+  return cleanTags;
 }
 
 function normalizeMaterialSeriesTags(seriesTags, materials) {

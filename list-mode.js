@@ -25,9 +25,10 @@ const cropPresetStorageKey = "livlivCropPresets";
 const cropPresetMaxCount = 3;
 const materialTagOptions = ["エッセンス", "アニマ", "エレメント", "虫", "タマシイ", "ハウス", "その他"];
 const materialSeriesEnabledTags = ["タマシイ", "ハウス"];
+const materialNoTagFilterValue = "__no_tag__";
 let livlyColumnCount = readCardColumnCount("livlyColumnCount");
 let materialColumnCount = readCardColumnCount("materialColumnCount");
-let materialVisibleTags = readMaterialVisibleTags().slice(0, 1);
+let materialVisibleTags = readMaterialVisibleTags();
 let materialVisibleSeriesTags = readMaterialVisibleSeriesTags().slice(0, 1);
 let materialSortField = localStorage.getItem("materialSortField") || "";
 let materialSortDirection = localStorage.getItem("materialSortDirection") || "desc";
@@ -102,7 +103,9 @@ let firebaseAuthError = "";
 let sharedDataStatus = "共有データを準備中";
 let sharedDataListenerStarted = false;
 let sharedDataUnsubscribe = null;
-const livlivUpdateNumber = window.LIVLIV_UPDATE_NUMBER || "2026.07.03-09";
+let sharedSaveProgressTimer = null;
+let sharedSaveCompletedAt = 0;
+const livlivUpdateNumber = window.LIVLIV_UPDATE_NUMBER || "2026.07.04-01";
 let expDeletePressTimer = null;
 let expDeletePressTarget = null;
 let suppressNextExpClick = false;
@@ -636,17 +639,18 @@ function renderBulkImageUpload(route) {
 }
 
 function renderMaterialTagFilter() {
-  const selectedTag = materialVisibleTags[0] || "";
+  const selectedTags = new Set(materialVisibleTags);
 
   return `
     <div class="material-filter-row" aria-label="素材タグフィルター">
       <span class="material-filter-label">タグ</span>
-      <select class="material-filter-select" data-material-filter-select aria-label="素材タグフィルター">
-        <option value="" ${selectedTag ? "" : "selected"}>全部</option>
+      <div class="material-filter-multi" aria-label="素材タグフィルター">
+        <button type="button" class="material-filter-chip ${materialVisibleTags.length ? "" : "is-active"}" data-material-filter-all aria-pressed="${materialVisibleTags.length ? "false" : "true"}">全部</button>
         ${materialTagOptions.map(tag => `
-          <option value="${escapeHtml(tag)}" ${selectedTag === tag ? "selected" : ""}>${escapeHtml(tag)}</option>
+          <button type="button" class="material-filter-chip ${selectedTags.has(tag) ? "is-active" : ""}" data-material-filter-tag="${escapeHtml(tag)}" aria-pressed="${selectedTags.has(tag) ? "true" : "false"}">${escapeHtml(tag)}</button>
         `).join("")}
-      </select>
+        <button type="button" class="material-filter-chip ${selectedTags.has(materialNoTagFilterValue) ? "is-active" : ""}" data-material-filter-tag="${materialNoTagFilterValue}" aria-pressed="${selectedTags.has(materialNoTagFilterValue) ? "true" : "false"}">タグなし</button>
+      </div>
     </div>
   `;
 }
@@ -723,7 +727,7 @@ function readMaterialVisibleTags() {
       return [];
     }
 
-    return cleanMaterialTags(savedTags);
+    return cleanMaterialFilterTags(savedTags);
   } catch (error) {
     return [];
   }
@@ -759,10 +763,20 @@ function cleanMaterialTags(tags) {
   return [...new Set(tags.map(tag => String(tag || "")).filter(tag => materialTagOptions.includes(tag)))];
 }
 
+function cleanMaterialFilterTags(tags) {
+  if (!Array.isArray(tags)) {
+    return [];
+  }
+
+  return [...new Set(tags
+    .map(tag => String(tag || ""))
+    .filter(tag => tag === materialNoTagFilterValue || materialTagOptions.includes(tag)))];
+}
+
 function itemMaterialTags(item) {
   const tags = cleanMaterialTags(item.tags);
 
-  return tags.length ? tags : ["その他"];
+  return tags.length ? tags : ["タグなし"];
 }
 
 function cleanMaterialSeriesTags(tags, onlyExisting = false) {
@@ -797,8 +811,10 @@ function filterMaterialItems(items) {
   const useSeriesFilter = isMaterialSeriesFilterAvailable() && materialVisibleSeriesTags.length;
 
   return items.filter(item => {
+    const rawTags = cleanMaterialTags(item.tags);
     const matchesTag = !materialVisibleTags.length ||
-      itemMaterialTags(item).some(tag => materialVisibleTags.includes(tag));
+      rawTags.some(tag => materialVisibleTags.includes(tag)) ||
+      (materialVisibleTags.includes(materialNoTagFilterValue) && !rawTags.length);
     const matchesSeries = !useSeriesFilter ||
       itemMaterialSeriesTags(item).some(tag => materialVisibleSeriesTags.includes(tag));
 
@@ -1319,12 +1335,13 @@ function renderMaterialTagArea(item) {
   const tags = itemMaterialTags(item);
 
   if (editMode) {
-    const selectedTag = tags[0] || "その他";
+    const selectedTag = cleanMaterialTags(item.tags)[0] || "";
 
     return `
       <fieldset class="material-tag-editor" data-edit-copy-field="tags">
         <legend>タグ</legend>
         <select class="material-tag-select" data-material-tag aria-label="素材タグ">
+          <option value="" ${selectedTag ? "" : "selected"}>タグなし</option>
           ${materialTagOptions.map(tag => `
             <option value="${escapeHtml(tag)}" ${selectedTag === tag ? "selected" : ""}>${escapeHtml(tag)}</option>
           `).join("")}
@@ -4322,37 +4339,23 @@ function formatProbabilitySlotRateInput(input) {
   updateProbabilityResult();
 }
 
-function saveProbabilitySettings() {
+async function saveProbabilitySettings() {
   if (!editMode) {
     return;
   }
+
+  const buttonSelector = '[data-action="save-probability-settings"]';
+  markEditSaveButtonSaving(buttonSelector);
 
   Object.keys(appData.personalitySlotRates).forEach(field => {
     appData.personalitySlotRates[field] = percentageStorageValue(appData.personalitySlotRates[field]);
   });
 
   appData = saveAppData(appData);
-  syncSharedAppDataAfterSave();
+  const sharedSaved = await syncSharedAppDataAfterSave();
   commitProbabilitySettingsEditSession();
   renderView();
-
-  const button = document.querySelector('[data-action="save-probability-settings"]');
-
-  if (!button) {
-    return;
-  }
-
-  button.textContent = "保存しました";
-  button.classList.add("is-saved");
-
-  setTimeout(() => {
-    const currentButton = document.querySelector('[data-action="save-probability-settings"]');
-
-    if (currentButton) {
-      currentButton.textContent = "保存";
-      currentButton.classList.remove("is-saved");
-    }
-  }, 1200);
+  showEditSaveComplete(buttonSelector, sharedSaved, "保存");
 }
 
 function beginExperienceEditSession() {
@@ -4877,29 +4880,14 @@ function clearExperienceDeletePressTimer() {
   expDeletePressTarget = null;
 }
 
-function saveExperienceEdits() {
+async function saveExperienceEdits() {
+  const buttonSelector = '[data-action="save-experience"]';
+  markEditSaveButtonSaving(buttonSelector);
   appData = saveAppData(appData);
-  syncSharedAppDataAfterSave();
+  const sharedSaved = await syncSharedAppDataAfterSave();
   commitExperienceEditSession();
   renderView();
-
-  const button = document.querySelector('[data-action="save-experience"]');
-
-  if (!button) {
-    return;
-  }
-
-  button.textContent = "保存しました";
-  button.classList.add("is-saved");
-
-  setTimeout(() => {
-    const currentButton = document.querySelector('[data-action="save-experience"]');
-
-    if (currentButton) {
-      currentButton.textContent = "編集内容を保存";
-      currentButton.classList.remove("is-saved");
-    }
-  }, 1200);
+  showEditSaveComplete(buttonSelector, sharedSaved);
 }
 
 function currentDdEditData() {
@@ -5395,29 +5383,14 @@ function copyDdTable(button) {
   renderView();
 }
 
-function saveDdEdits() {
+async function saveDdEdits() {
+  const buttonSelector = '[data-action="save-dd"]';
+  markEditSaveButtonSaving(buttonSelector);
   appData = saveAppData(appData);
-  syncSharedAppDataAfterSave();
+  const sharedSaved = await syncSharedAppDataAfterSave();
   commitDdEditSession();
   renderView();
-
-  const button = document.querySelector('[data-action="save-dd"]');
-
-  if (!button) {
-    return;
-  }
-
-  button.textContent = "保存しました";
-  button.classList.add("is-saved");
-
-  setTimeout(() => {
-    const currentButton = document.querySelector('[data-action="save-dd"]');
-
-    if (currentButton) {
-      currentButton.textContent = "編集内容を保存";
-      currentButton.classList.remove("is-saved");
-    }
-  }, 1200);
+  showEditSaveComplete(buttonSelector, sharedSaved);
 }
 
 function canUseCursorPanel(event) {
@@ -6676,6 +6649,20 @@ function setSharedDataStatus(message) {
   updateAuthUi();
 }
 
+function clearSharedSaveProgressTimer() {
+  clearTimeout(sharedSaveProgressTimer);
+  sharedSaveProgressTimer = null;
+}
+
+function setSharedSaveProgress(percent) {
+  setSharedDataStatus(`共有データへ保存中 ${percent}%`);
+  document.querySelectorAll('[data-action^="save-"]').forEach(button => {
+    if (button.disabled) {
+      button.textContent = `共有保存中 ${percent}%`;
+    }
+  });
+}
+
 function applySharedAppDataSnapshot(snapshot) {
   if (!snapshot.exists()) {
     setSharedDataStatus("共有データはまだありません");
@@ -6683,6 +6670,10 @@ function applySharedAppDataSnapshot(snapshot) {
   }
 
   if (editMode) {
+    if (Date.now() - sharedSaveCompletedAt < 3000) {
+      return;
+    }
+
     setSharedDataStatus("共有データ更新あり（編集中）");
     return;
   }
@@ -6760,29 +6751,38 @@ async function saveSharedAppData() {
     return false;
   }
 
-  setSharedDataStatus("共有データへ保存中");
+  clearSharedSaveProgressTimer();
+  setSharedSaveProgress(0);
 
   try {
+    sharedSaveProgressTimer = setTimeout(() => setSharedSaveProgress(50), 120);
     await firebaseServices.setDoc(dataRef, {
       data: normalizeSharedAppData(appData),
       updatedAt: firebaseServices.serverTimestamp(),
       updatedBy: firebaseUser.email || firebaseUser.uid || ""
     }, { merge: true });
-    setSharedDataStatus("共有データに保存しました");
+    clearSharedSaveProgressTimer();
+    sharedSaveCompletedAt = Date.now();
+    setSharedSaveProgress(100);
+    sharedSaveProgressTimer = setTimeout(() => {
+      setSharedDataStatus("共有データに保存しました");
+      sharedSaveProgressTimer = null;
+    }, 420);
     return true;
   } catch (error) {
+    clearSharedSaveProgressTimer();
     setSharedDataStatus("共有データへ保存できませんでした");
     return false;
   }
 }
 
-function syncSharedAppDataAfterSave() {
+async function syncSharedAppDataAfterSave() {
   if (!firebaseUser) {
     setSharedDataStatus("ログイン中だけ共有保存します");
-    return;
+    return false;
   }
 
-  saveSharedAppData();
+  return saveSharedAppData();
 }
 
 function setupFirebaseAuth(services) {
@@ -7019,6 +7019,40 @@ function updateEditSaveButtonState() {
       : hasUnsavedMaterialEdits();
 
   button.classList.toggle("is-dirty", hasUnsavedChanges);
+}
+
+function markEditSaveButtonSaving(selector) {
+  const button = document.querySelector(selector);
+
+  if (!button) {
+    return;
+  }
+
+  button.textContent = firebaseUser ? "共有保存中..." : "保存中...";
+  button.disabled = true;
+}
+
+function showEditSaveComplete(selector, sharedSaved = false, resetLabel = "編集内容を保存") {
+  const button = document.querySelector(selector);
+
+  if (!button) {
+    return;
+  }
+
+  button.disabled = false;
+  button.textContent = sharedSaved ? "共有保存しました" : "保存しました";
+  button.classList.add("is-saved");
+  button.classList.remove("is-dirty");
+
+  setTimeout(() => {
+    const currentButton = document.querySelector(selector);
+
+    if (currentButton) {
+      currentButton.disabled = false;
+      currentButton.textContent = resetLabel;
+      currentButton.classList.remove("is-saved");
+    }
+  }, 1400);
 }
 
 function beginLivlyEditSession() {
@@ -7714,7 +7748,7 @@ async function startBulkImageUpload(route, fileList) {
     resetLivlyCropState();
 
     const itemType = route === "materials" ? "material" : "livly";
-    const createdItems = imageInfos.map(imageInfo => createBulkImageItem(route, imageInfo.fileName));
+    const createdItems = imageInfos.map(() => createBulkImageItem(route));
     const firstItem = createdItems[0];
     const batch = {
       itemType,
@@ -7751,16 +7785,14 @@ async function startBulkImageUpload(route, fileList) {
   }
 }
 
-function createBulkImageItem(route, name) {
+function createBulkImageItem(route) {
   const item = createNewItem();
 
   if (route === "materials") {
-    item.name = name;
     appData.materials.push(item);
     return item;
   }
 
-  item.species = name;
   appData.livlies.push(item);
   return item;
 }
@@ -7839,6 +7871,14 @@ function renderLivlyCropTool(item, itemType = "livly") {
         <img src="${escapeHtml(state.dataUrl)}" alt="トリミング画像" draggable="false">
         <span class="livly-crop-box" data-livly-crop-box style="${cropStyle}">
           ${["nw", "ne", "sw", "se"].map(handle => `<i class="${livlyCropPinnedLoupeHandle === handle ? "is-pinned" : ""}" data-livly-crop-handle="${handle}"></i>`).join("")}
+          ${[
+            ["up", "▲", "上へ微調整"],
+            ["right", "▶", "右へ微調整"],
+            ["down", "▼", "下へ微調整"],
+            ["left", "◀", "左へ微調整"]
+          ].map(([direction, mark, label]) => `
+            <button type="button" class="livly-crop-nudge is-${direction}" data-action="nudge-livly-crop" data-crop-nudge="${direction}" aria-label="${label}">${mark}</button>
+          `).join("")}
         </span>
       </div>
       <div class="livly-crop-loupe ${livlyCropPinnedLoupeHandle ? "is-visible is-pinned" : ""}" data-livly-crop-loupe style="--fill-color:${escapeHtml(state.fillColor)}">
@@ -8176,7 +8216,39 @@ function updateLivlyCropInput(input) {
   renderView();
 }
 
+function nudgeLivlyCrop(direction) {
+  if (!livlyCropState) {
+    return;
+  }
+
+  const step = Math.max(1, Math.round(Math.max(livlyCropState.naturalWidth, livlyCropState.naturalHeight) / 240));
+
+  if (direction === "up") {
+    livlyCropState.y -= step;
+  }
+
+  if (direction === "down") {
+    livlyCropState.y += step;
+  }
+
+  if (direction === "left") {
+    livlyCropState.x -= step;
+  }
+
+  if (direction === "right") {
+    livlyCropState.x += step;
+  }
+
+  clampLivlyCropState();
+  updateLivlyCropBoxElement();
+  updateLivlyCropLoupe();
+}
+
 function startLivlyCropDrag(event) {
+  if (event.target.closest('[data-action="nudge-livly-crop"]')) {
+    return;
+  }
+
   const cropBox = event.target.closest("[data-livly-crop-box]");
 
   if (!cropBox || !livlyCropState || !isCropRoute() || !editMode || event.button !== 0) {
@@ -8756,29 +8828,14 @@ function clearLivlyDeletePressTimer() {
   livlyDeletePressTarget = null;
 }
 
-function saveLivlyEdits() {
+async function saveLivlyEdits() {
+  const buttonSelector = '[data-action="save-livlies"]';
+  markEditSaveButtonSaving(buttonSelector);
   appData = saveAppData(appData);
-  syncSharedAppDataAfterSave();
+  const sharedSaved = await syncSharedAppDataAfterSave();
   commitLivlyEditSession();
   renderView();
-
-  const button = document.querySelector('[data-action="save-livlies"]');
-
-  if (!button) {
-    return;
-  }
-
-  button.textContent = "保存しました";
-  button.classList.add("is-saved");
-
-  setTimeout(() => {
-    const currentButton = document.querySelector('[data-action="save-livlies"]');
-
-    if (currentButton) {
-      currentButton.textContent = "編集内容を保存";
-      currentButton.classList.remove("is-saved");
-    }
-  }, 1200);
+  showEditSaveComplete(buttonSelector, sharedSaved);
 }
 
 function addInlineMaterial() {
@@ -8840,7 +8897,7 @@ function updateMaterialTags(input) {
 
   const selectedTags = cleanMaterialTags([input.value]);
 
-  item.tags = selectedTags.length ? selectedTags : ["その他"];
+  item.tags = selectedTags;
 
   if (!materialAllowsSeries(item.tags)) {
     item.seriesTags = [];
@@ -8871,11 +8928,41 @@ function updateMaterialSeriesTags(input) {
 }
 
 function setMaterialVisibleTag(tag) {
-  if (tag && !materialTagOptions.includes(tag)) {
+  if (tag && tag !== materialNoTagFilterValue && !materialTagOptions.includes(tag)) {
     return;
   }
 
   materialVisibleTags = tag ? [tag] : [];
+
+  if (!isMaterialSeriesFilterAvailable()) {
+    materialVisibleSeriesTags = [];
+    saveMaterialVisibleSeriesTags();
+  }
+
+  saveMaterialVisibleTags();
+  closeTouchInfo();
+  renderView();
+}
+
+function toggleMaterialVisibleTag(tag) {
+  if (!tag) {
+    setMaterialVisibleTag("");
+    return;
+  }
+
+  if (tag !== materialNoTagFilterValue && !materialTagOptions.includes(tag)) {
+    return;
+  }
+
+  const selectedTags = new Set(cleanMaterialFilterTags(materialVisibleTags));
+
+  if (selectedTags.has(tag)) {
+    selectedTags.delete(tag);
+  } else {
+    selectedTags.add(tag);
+  }
+
+  materialVisibleTags = cleanMaterialFilterTags([...selectedTags]);
 
   if (!isMaterialSeriesFilterAvailable()) {
     materialVisibleSeriesTags = [];
@@ -9054,29 +9141,14 @@ function deleteMaterial(itemId) {
   renderView();
 }
 
-function saveMaterialEdits() {
+async function saveMaterialEdits() {
+  const buttonSelector = '[data-action="save-materials"]';
+  markEditSaveButtonSaving(buttonSelector);
   appData = saveAppData(appData);
-  syncSharedAppDataAfterSave();
+  const sharedSaved = await syncSharedAppDataAfterSave();
   commitMaterialEditSession();
   renderView();
-
-  const button = document.querySelector('[data-action="save-materials"]');
-
-  if (!button) {
-    return;
-  }
-
-  button.textContent = "保存しました";
-  button.classList.add("is-saved");
-
-  setTimeout(() => {
-    const currentButton = document.querySelector('[data-action="save-materials"]');
-
-    if (currentButton) {
-      currentButton.textContent = "編集内容を保存";
-      currentButton.classList.remove("is-saved");
-    }
-  }, 1200);
+  showEditSaveComplete(buttonSelector, sharedSaved);
 }
 
 function addInlinePersonality() {
@@ -9179,30 +9251,15 @@ function normalizePersonalityPercentages() {
   });
 }
 
-function savePersonalityEdits() {
+async function savePersonalityEdits() {
+  const buttonSelector = '[data-action="save-personalities"]';
+  markEditSaveButtonSaving(buttonSelector);
   normalizePersonalityPercentages();
   appData = saveAppData(appData);
-  syncSharedAppDataAfterSave();
+  const sharedSaved = await syncSharedAppDataAfterSave();
   commitPersonalityEditSession();
   renderView();
-
-  const button = document.querySelector('[data-action="save-personalities"]');
-
-  if (!button) {
-    return;
-  }
-
-  button.textContent = "保存しました";
-  button.classList.add("is-saved");
-
-  setTimeout(() => {
-    const currentButton = document.querySelector('[data-action="save-personalities"]');
-
-    if (currentButton) {
-      currentButton.textContent = "編集内容を保存";
-      currentButton.classList.remove("is-saved");
-    }
-  }, 1200);
+  showEditSaveComplete(buttonSelector, sharedSaved);
 }
 
 function getPersonalityDragAfterElement(list, y) {
@@ -10023,6 +10080,13 @@ contentArea.addEventListener("click", event => {
     return;
   }
 
+  const nudgeLivlyCropButton = event.target.closest('[data-action="nudge-livly-crop"]');
+
+  if (nudgeLivlyCropButton && editMode && isCropRoute()) {
+    nudgeLivlyCrop(nudgeLivlyCropButton.dataset.cropNudge);
+    return;
+  }
+
   const cancelLivlyCropButton = event.target.closest('[data-action="cancel-livly-crop"]');
 
   if (cancelLivlyCropButton && editMode && isCropRoute()) {
@@ -10115,7 +10179,7 @@ contentArea.addEventListener("click", event => {
   const materialFilterTagButton = event.target.closest("[data-material-filter-tag]");
 
   if (materialFilterTagButton && activeRoute === "materials") {
-    setMaterialVisibleTag(materialFilterTagButton.getAttribute("data-material-filter-tag"));
+    toggleMaterialVisibleTag(materialFilterTagButton.getAttribute("data-material-filter-tag"));
     return;
   }
 
