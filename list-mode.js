@@ -98,7 +98,7 @@ let firebaseAuthReady = false;
 let firebaseAuthSubscribed = false;
 let firebaseUser = null;
 let firebaseAuthError = "";
-let sharedDataStatus = "共有データ 未接続";
+let sharedDataStatus = "共有データを準備中";
 let expDeletePressTimer = null;
 let expDeletePressTarget = null;
 let suppressNextExpClick = false;
@@ -6402,7 +6402,7 @@ function updateAuthUi() {
   authLoginForm.hidden = isLoggedIn;
   authLogoutButton.hidden = !isLoggedIn;
   editModeButton.hidden = !isLoggedIn;
-  cloudStatusText.textContent = isLoggedIn ? sharedDataStatus : "共有データはログイン後に同期";
+  cloudStatusText.textContent = sharedDataStatus;
 
   if (!isLoggedIn && editMode) {
     toggleEditMode();
@@ -6427,7 +6427,7 @@ function setSharedDataStatus(message) {
 }
 
 async function loadSharedAppData() {
-  if (!firebaseServices || !firebaseUser) {
+  if (!firebaseServices) {
     return;
   }
 
@@ -6441,10 +6441,6 @@ async function loadSharedAppData() {
 
   try {
     const snapshot = await firebaseServices.getDoc(dataRef);
-
-    if (!firebaseUser) {
-      return;
-    }
 
     if (!snapshot.exists()) {
       setSharedDataStatus("共有データはまだありません");
@@ -6517,12 +6513,8 @@ function setupFirebaseAuth(services) {
     firebaseAuthReady = true;
     firebaseUser = user;
     firebaseAuthError = "";
-    sharedDataStatus = user ? "共有データを確認中" : "共有データ 未接続";
     updateAuthUi();
-
-    if (user) {
-      loadSharedAppData();
-    }
+    loadSharedAppData();
   }, () => {
     firebaseAuthReady = true;
     firebaseUser = null;
