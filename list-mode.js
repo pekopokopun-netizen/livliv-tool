@@ -99,6 +99,7 @@ let firebaseAuthSubscribed = false;
 let firebaseUser = null;
 let firebaseAuthError = "";
 let sharedDataStatus = "共有データを準備中";
+const livlivUpdateNumber = window.LIVLIV_UPDATE_NUMBER || "2026.07.03-02";
 let expDeletePressTimer = null;
 let expDeletePressTarget = null;
 let suppressNextExpClick = false;
@@ -9442,6 +9443,125 @@ function closeMenu() {
   menuButton.textContent = "•••";
 }
 
+function preventMobileViewportZoom() {
+  if (typeof window.lockLivlivViewportZoom === "function") {
+    window.lockLivlivViewportZoom();
+    return;
+  }
+
+  if (window.__livlivViewportZoomLocked) {
+    return;
+  }
+
+  window.__livlivViewportZoomLocked = true;
+
+  const viewportMeta = document.querySelector('meta[name="viewport"]');
+
+  if (viewportMeta) {
+    viewportMeta.setAttribute(
+      "content",
+      "width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content"
+    );
+  }
+
+  const prevent = event => {
+    if (event.cancelable) {
+      event.preventDefault();
+    }
+  };
+
+  const addZoomLock = (target, eventName, handler) => {
+    if (!target) {
+      return;
+    }
+
+    target.addEventListener(eventName, handler, { passive: false, capture: true });
+  };
+
+  ["gesturestart", "gesturechange", "gestureend"].forEach(eventName => {
+    addZoomLock(window, eventName, prevent);
+    addZoomLock(document, eventName, prevent);
+  });
+
+  addZoomLock(document, "touchmove", event => {
+    if ((event.touches && event.touches.length > 1) || event.scale !== 1) {
+      prevent(event);
+    }
+  });
+
+  let lastTouchEnd = 0;
+  addZoomLock(document, "touchend", event => {
+    const now = Date.now();
+
+    if (now - lastTouchEnd <= 350) {
+      prevent(event);
+    }
+
+    lastTouchEnd = now;
+  });
+}
+
+function isMobileInputViewport() {
+  if (!window.matchMedia) {
+    return window.innerWidth <= 640;
+  }
+
+  return window.matchMedia("(hover: none), (pointer: coarse), (max-width: 640px)").matches;
+}
+
+function enforceMobileInputFontSize(root = document) {
+  if (!isMobileInputViewport()) {
+    return;
+  }
+
+  const selector = 'input:not([type="range"]), select, textarea, [contenteditable="true"]';
+  const fields = [];
+
+  if (root.nodeType === Node.ELEMENT_NODE && root.matches(selector)) {
+    fields.push(root);
+  }
+
+  if (root.querySelectorAll) {
+    fields.push(...root.querySelectorAll(selector));
+  }
+
+  fields.forEach(field => {
+    const fontSize = Number.parseFloat(window.getComputedStyle(field).fontSize);
+
+    if (!Number.isFinite(fontSize) || fontSize < 16) {
+      field.style.setProperty("font-size", "16px", "important");
+    }
+  });
+}
+
+function installMobileInputFontGuard() {
+  enforceMobileInputFontSize();
+
+  document.addEventListener("focusin", event => {
+    enforceMobileInputFontSize(event.target);
+  });
+
+  const observer = new MutationObserver(mutations => {
+    mutations.forEach(mutation => {
+      mutation.addedNodes.forEach(node => {
+        if (node.nodeType === Node.ELEMENT_NODE) {
+          enforceMobileInputFontSize(node);
+        }
+      });
+    });
+  });
+
+  observer.observe(document.body, { childList: true, subtree: true });
+}
+
+function updateLoadingVersionLabel() {
+  const versionLabel = document.querySelector(".loading-version");
+
+  if (versionLabel) {
+    versionLabel.textContent = `アップデート ${livlivUpdateNumber}`;
+  }
+}
+
 routeButtons.forEach(button => {
   button.addEventListener("click", () => {
     switchRoute(button.dataset.route);
@@ -10844,6 +10964,9 @@ window.addEventListener("hashchange", () => {
   switchRoute(getInitialRoute());
 });
 
+preventMobileViewportZoom();
+installMobileInputFontGuard();
+updateLoadingVersionLabel();
 initializeFirebaseAuthUi();
 renderView();
 
