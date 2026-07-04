@@ -8793,3 +8793,99 @@ body.single-page-site[data-active-route="materials"] .material-card-list.is-many
 body.single-page-site[data-active-route="materials"] .material-card-list.is-many-columns .material-card-title-text {
   line-height: 1;
 }
+
+body.single-page-site[data-active-route="personalities"] .personality-list {
+  width: 100%;
+  box-sizing: border-box;
+  padding-inline: 6px;
+}
+
+body.single-page-site[data-active-route="personalities"] .personality-row.list-item {
+  grid-template-columns: minmax(0, 1fr) minmax(76px, max-content);
+}
+
+body.single-page-site[data-active-route="personalities"] .personality-row.list-item.is-display-all {
+  grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.45fr) minmax(78px, max-content);
+}
+
+body.single-page-site[data-active-route="personalities"].is-edit-mode .personality-row.list-item {
+  grid-template-columns: auto minmax(0, 1fr) minmax(66px, 76px);
+}
+
+body.single-page-site[data-active-route="personalities"].is-edit-mode .personality-row.list-item.is-display-all {
+  grid-template-columns: auto minmax(0, 0.9fr) minmax(0, 1.35fr) minmax(66px, 76px);
+}
+
+body.single-page-site[data-active-route="personalities"] .personality-row .personality-name {
+  min-width: 0;
+  overflow: hidden;
+  overflow-wrap: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  word-break: normal;
+}
+
+body.single-page-site[data-active-route="personalities"] .personality-rate {
+  min-width: 5.35em;
+  box-sizing: border-box;
+  justify-self: end;
+  overflow: visible;
+  padding-right: 4px;
+}
+
+body.single-page-site[data-active-route="personalities"] .personality-percent-field.personality-rate {
+  min-width: 66px;
+  padding-right: 5px;
+}
+
+body.single-page-site[data-active-route="personalityProbability"] .probability-choice-list,
+body.single-page-site[data-active-route="personalityProbability"] .probability-unwanted-list {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr));
+}
+
+body.single-page-site[data-active-route="personalityProbability"] .probability-unwanted-list {
+  align-items: start;
+}
+
+body.single-page-site[data-active-route="personalityProbability"] .probability-unwanted-card .probability-choice {
+  min-height: 34px;
+  padding: 5px 7px;
+  border-radius: 6px;
+  font-size: 11px;
+}
+
+body.single-page-site[data-active-route="personalityProbability"] .probability-unwanted-card .probability-choice span {
+  font-size: 0.92em;
+}
+
+body.single-page-site[data-active-route="personalityProbability"] .probability-unwanted-drop-slot {
+  min-height: 34px;
+}
+
+@media (max-width: 640px) {
+  body.single-page-site[data-active-route="personalityProbability"] .probability-choice-list,
+  body.single-page-site[data-active-route="personalityProbability"] .probability-unwanted-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  body.single-page-site[data-active-route="personalities"] .personality-row.list-item {
+    grid-template-columns: minmax(0, 1fr) minmax(68px, max-content);
+  }
+
+  body.single-page-site[data-active-route="personalities"] .personality-row.list-item.is-display-all {
+    grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr) minmax(68px, max-content);
+  }
+
+  body.single-page-site[data-active-route="personalities"].is-edit-mode .personality-row.list-item {
+    grid-template-columns: auto minmax(0, 1fr) minmax(62px, 70px);
+  }
+
+  body.single-page-site[data-active-route="personalities"].is-edit-mode .personality-row.list-item.is-display-all {
+    grid-template-columns: auto minmax(0, 0.8fr) minmax(0, 1.2fr) minmax(62px, 70px);
+  }
+
+  body.single-page-site[data-active-route="personalities"] .personality-rate {
+    min-width: 5em;
+    padding-right: 5px;
+  }
+}

@@ -110,7 +110,7 @@ let sharedSaveCompletedAt = 0;
 let sharedDataLoadToken = 0;
 const sharedDataChunkSize = 240000;
 const sharedDataChunkFormat = "chunked-json-v1";
-const livlivUpdateNumber = window.LIVLIV_UPDATE_NUMBER || "2026.07.04-17";
+const livlivUpdateNumber = window.LIVLIV_UPDATE_NUMBER || "2026.07.04-18";
 let expDeletePressTimer = null;
 let expDeletePressTarget = null;
 let suppressNextExpClick = false;
@@ -3228,6 +3228,20 @@ function findProbabilityUnwantedListFromElement(element) {
   return element?.closest(".probability-unwanted-list") || null;
 }
 
+function findExpandedProbabilityUnwantedZoneAtPoint(clientX, clientY) {
+  const tolerance = window.matchMedia?.("(max-width: 640px), (pointer: coarse)")?.matches ? 34 : 16;
+
+  return Array.from(document.querySelectorAll("[data-probability-unwanted-zone]"))
+    .find(zone => {
+      const rect = zone.getBoundingClientRect();
+
+      return clientX >= rect.left - 10 &&
+        clientX <= rect.right + 10 &&
+        clientY >= rect.top - tolerance &&
+        clientY <= rect.bottom + tolerance;
+    }) || null;
+}
+
 function findProbabilityDropTargetsAtPoint(clientX, clientY) {
   const elements = typeof document.elementsFromPoint === "function"
     ? document.elementsFromPoint(clientX, clientY)
@@ -3252,6 +3266,14 @@ function findProbabilityDropTargetsAtPoint(clientX, clientY) {
     if (zone && choiceList && unwantedList) {
       break;
     }
+  }
+
+  if (!zone) {
+    zone = findExpandedProbabilityUnwantedZoneAtPoint(clientX, clientY);
+  }
+
+  if (zone && !unwantedList) {
+    unwantedList = zone.querySelector(".probability-unwanted-list");
   }
 
   return {
@@ -6675,11 +6697,13 @@ function switchRoute(route) {
     return;
   }
 
+  const routeChanged = route !== activeRoute;
+
   if (itemModal.classList.contains("is-open")) {
     closeEditor();
   }
 
-  if (route !== activeRoute) {
+  if (routeChanged) {
     discardUnsavedPersonalityEdits();
     discardUnsavedLivlyEdits();
     discardUnsavedMaterialEdits();
@@ -6701,6 +6725,13 @@ function switchRoute(route) {
   closeMenu();
   window.history.replaceState(null, "", `#${route}`);
   renderView();
+
+  if (routeChanged) {
+    requestAnimationFrame(() => {
+      window.scrollTo({ left: 0, top: 0, behavior: "auto" });
+      contentArea.scrollTop = 0;
+    });
+  }
 }
 
 function toggleEditMode() {
